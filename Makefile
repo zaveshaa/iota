@@ -1,5 +1,5 @@
 CC      ?= cc
-CFLAGS  ?= -std=c11 -O2 -Wall -Wextra -Iinclude
+CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Iinclude
 LDFLAGS ?=
 
 BIN     ?= iota
