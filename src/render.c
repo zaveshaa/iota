@@ -28,10 +28,18 @@ void render_init(int c, int r) {
 }
 
 void render_resize(int c, int r) {
+    render_free();
+    render_init(c, r);
+}
+
+void render_free(void) {
     free(buf);
     free(depth);
     free(out);
-    render_init(c, r);
+    buf = NULL;
+    depth = NULL;
+    out = NULL;
+    cols = rows = 0;
 }
 
 void render_clear(void) {

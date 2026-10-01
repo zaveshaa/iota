@@ -176,7 +176,7 @@ static int handle(Camera *cam, World *w, ObjType *type, Mode *mode) {
         case KEY_TURN_D: cam->pitch -= TURN; break;
 
         case KEY_TAB:  *mode = (*mode == MODE_FLY) ? MODE_WALK : MODE_FLY; break;
-        case KEY_BOX:    *type = OBJ_BOX; break;
+        case KEY_BOX:  *type = OBJ_BOX; break;
         case KEY_SPHERE: *type = OBJ_SPHERE; break;
 
         case KEY_PLACE: {
@@ -256,7 +256,7 @@ int main(void) {
         render_present();
     }
 
-    render_resize(0, 0);
+    render_free();
     term_close();
     return 0;
 }

@@ -9,7 +9,7 @@ typedef enum { OBJ_BOX, OBJ_SPHERE } ObjType;
 
 typedef struct {
     Vec3 pos;
-    Vec3 half;
+    Vec3 half;  // half extents, radius in x for a sphere
     ObjType type;
 } Obj;
 
