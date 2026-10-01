@@ -103,6 +103,7 @@ Key term_read_key(void) {
         case '2':           return KEY_SPHERE;
         case 'o': case 'O': return KEY_SAVE;
         case 'l': case 'L': return KEY_LOAD;
+        case '\t':          return KEY_TAB;
         default:  return KEY_NONE;
     }
 }

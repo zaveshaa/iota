@@ -5,7 +5,11 @@ A 3D level editor that renders inside the terminal.
 
     make run
 
-`WASD` move, arrows look, `Esc` quit.
+`WASD` move, arrows look, `Esc` quit, `Tab` switch between fly and walk.
+
+Fly ignores gravity. Walk keeps the camera at eye height, falls when there
+is nothing underfoot, walks around anything taller than a step and steps
+onto anything lower.
 
 Editing:
 

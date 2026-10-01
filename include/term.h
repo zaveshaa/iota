@@ -15,6 +15,7 @@ typedef enum {
     KEY_PLACE, KEY_DEL,
     KEY_BOX, KEY_SPHERE,
     KEY_SAVE, KEY_LOAD,
+    KEY_TAB,
     KEY_ESC
 } Key;
 

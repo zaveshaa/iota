@@ -8,9 +8,16 @@
 
 #define FOV    1.1f
 #define STEP   0.12f
+#define WALK   0.08f
 #define TURN   0.03f
 #define PITCH_MAX 1.5f
 #define REACH  4.0f
+#define EYE    1.7f
+#define GRAV   0.15f
+#define BODY   0.25f
+#define STEP_UP 0.7f
+
+typedef enum { MODE_FLY, MODE_WALK } Mode;
 
 static const char *LEVEL_PATH = "level.txt";
 
@@ -67,21 +74,108 @@ static void draw_scene(Camera cam, const World *w, int cols, int rows) {
     render_put(cols / 2, rows / 2, '+', -1.0f);
 }
 
-static int handle(Camera *cam, World *w, ObjType *type) {
+// push the body out of everything it overlaps, on the horizontal plane
+static void push_out(const World *w, Vec3 *p) {
+    float feet = p->y - EYE;
+    for (int i = 0; i < w->count; i++) {
+        const Obj *o = &w->items[i];
+        float top = o->pos.y + o->half.y;
+
+        // low enough to just step on top of
+        if (top <= feet + STEP_UP) continue;
+
+        if (o->type == OBJ_BOX) {
+            float dx = o->half.x + BODY - __builtin_fabsf(p->x - o->pos.x);
+            float dz = o->half.z + BODY - __builtin_fabsf(p->z - o->pos.z);
+            if (dx <= 0.0f || dz <= 0.0f) continue;
+            // leave by the nearest face
+            if (dx < dz) p->x += (p->x < o->pos.x ? -dx : dx);
+            else         p->z += (p->z < o->pos.z ? -dz : dz);
+        } else {
+            float r = o->half.x + BODY;
+            float ex = p->x - o->pos.x, ez = p->z - o->pos.z;
+            float d = __builtin_sqrtf(ex * ex + ez * ez);
+            if (d >= r) continue;
+            if (d < 0.0001f) { p->x += r; continue; }
+            float k = (r - d) / d;
+            p->x += ex * k;
+            p->z += ez * k;
+        }
+    }
+}
+
+// highest surface under p, the floor counts as zero
+static float support(const World *w, Vec3 p) {
+    float g = 0.0f;
+    for (int i = 0; i < w->count; i++) {
+        const Obj *o = &w->items[i];
+        float top;
+        if (o->type == OBJ_BOX) {
+            if (__builtin_fabsf(p.x - o->pos.x) > o->half.x) continue;
+            if (__builtin_fabsf(p.z - o->pos.z) > o->half.z) continue;
+            top = o->pos.y + o->half.y;
+        } else {
+            float r = o->half.x;
+            float ex = p.x - o->pos.x, ez = p.z - o->pos.z;
+            float d2 = ex * ex + ez * ez;
+            if (d2 >= r * r) continue;
+            top = o->pos.y + __builtin_sqrtf(r * r - d2);
+        }
+        if (top > g) g = top;
+    }
+    return g;
+}
+
+static void step_walk(Camera *cam, const World *w, Vec3 fwd, Vec3 right, float ahead, float strafe) {
+    Vec3 flat;
+    if (__builtin_fabsf(fwd.x) < 0.001f && __builtin_fabsf(fwd.z) < 0.001f)
+        flat = v3(__builtin_sinf(cam->yaw), 0.0f, __builtin_cosf(cam->yaw));
+    else
+        flat = v3_norm(v3(fwd.x, 0.0f, fwd.z));
+
+    Vec3 p = v3_add(cam->pos, v3_add(v3_scale(flat, ahead), v3_scale(right, strafe)));
+
+    push_out(w, &p);
+
+    float ground = support(w, p) + EYE;
+    if (p.y > ground) {
+        float drop = p.y - ground;
+        p.y -= drop < GRAV ? drop : GRAV;
+    } else {
+        p.y = ground;
+    }
+
+    cam->pos = p;
+}
+
+static int handle(Camera *cam, World *w, ObjType *type, Mode *mode) {
     Key k = term_read_key();
     Vec3 fwd, right, up;
     cam_basis(*cam, &fwd, &right, &up);
 
     switch (k) {
-        case KEY_W:      cam->pos = v3_add(cam->pos, v3_scale(fwd, STEP)); break;
-        case KEY_S:      cam->pos = v3_sub(cam->pos, v3_scale(fwd, STEP)); break;
-        case KEY_A:      cam->pos = v3_sub(cam->pos, v3_scale(right, STEP)); break;
-        case KEY_D:      cam->pos = v3_add(cam->pos, v3_scale(right, STEP)); break;
+        case KEY_W:
+            if (*mode == MODE_FLY) cam->pos = v3_add(cam->pos, v3_scale(fwd, STEP));
+            else                  step_walk(cam, w, fwd, right, WALK, 0.0f);
+            break;
+        case KEY_S:
+            if (*mode == MODE_FLY) cam->pos = v3_sub(cam->pos, v3_scale(fwd, STEP));
+            else                  step_walk(cam, w, v3_scale(fwd, -1.0f), right, WALK, 0.0f);
+            break;
+        case KEY_A:
+            if (*mode == MODE_FLY) cam->pos = v3_sub(cam->pos, v3_scale(right, STEP));
+            else                  step_walk(cam, w, fwd, right, 0.0f, -WALK);
+            break;
+        case KEY_D:
+            if (*mode == MODE_FLY) cam->pos = v3_add(cam->pos, v3_scale(right, STEP));
+            else                  step_walk(cam, w, fwd, right, 0.0f, WALK);
+            break;
         case KEY_TURN_L: cam->yaw -= TURN; break;
         case KEY_TURN_R: cam->yaw += TURN; break;
         case KEY_TURN_U: cam->pitch += TURN; break;
         case KEY_TURN_D: cam->pitch -= TURN; break;
 
+        case KEY_TAB:  *mode = (*mode == MODE_FLY) ? MODE_WALK : MODE_FLY; break;
         case KEY_BOX:    *type = OBJ_BOX; break;
         case KEY_SPHERE: *type = OBJ_SPHERE; break;
 
@@ -120,11 +214,11 @@ static int handle(Camera *cam, World *w, ObjType *type) {
     return 1;
 }
 
-static void draw_hud(const World *w, ObjType type, int rows) {
+static void draw_hud(const World *w, ObjType type, Mode mode, int rows) {
     char hud[256];
     snprintf(hud, sizeof(hud),
-             " [1] box  [2] sphere (%s)   [space] place  [x] delete  [o] save  [l] load   objects: %d ",
-             type == OBJ_BOX ? "box" : "sphere", w->count);
+             " [tab] %s  [1] box  [2] sphere (%s)  [space] place  [x] del  [o] save  [l] load  n=%d ",
+             mode == MODE_FLY ? "fly" : "walk", type == OBJ_BOX ? "box" : "sphere", w->count);
     render_text(0, rows - 1, hud);
 }
 
@@ -133,6 +227,7 @@ int main(void) {
 
     Camera cam = {v3(0.0f, 1.7f, -6.0f), 0.0f, 0.0f};
     ObjType type = OBJ_BOX;
+    Mode mode = MODE_FLY;
 
     World world;
     world_init(&world);
@@ -153,11 +248,11 @@ int main(void) {
             term_clean();
         }
 
-        if (!handle(&cam, &world, &type)) break;
+        if (!handle(&cam, &world, &type, &mode)) break;
 
         render_clear();
         draw_scene(cam, &world, cols, rows);
-        draw_hud(&world, type, rows);
+        draw_hud(&world, type, mode, rows);
         render_present();
     }
 
