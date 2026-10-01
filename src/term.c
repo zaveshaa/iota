@@ -1,5 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
 
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
+
 #include "term.h"
 
 #include <signal.h>
@@ -93,6 +97,12 @@ Key term_read_key(void) {
         case 'a': case 'A': return KEY_A;
         case 's': case 'S': return KEY_S;
         case 'd': case 'D': return KEY_D;
+        case ' ':           return KEY_PLACE;
+        case 'x': case 'X': return KEY_DEL;
+        case '1':           return KEY_BOX;
+        case '2':           return KEY_SPHERE;
+        case 'o': case 'O': return KEY_SAVE;
+        case 'l': case 'L': return KEY_LOAD;
         default:  return KEY_NONE;
     }
 }

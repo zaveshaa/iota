@@ -12,6 +12,9 @@ typedef enum {
     KEY_NONE,
     KEY_W, KEY_A, KEY_S, KEY_D,
     KEY_TURN_L, KEY_TURN_R, KEY_TURN_U, KEY_TURN_D,
+    KEY_PLACE, KEY_DEL,
+    KEY_BOX, KEY_SPHERE,
+    KEY_SAVE, KEY_LOAD,
     KEY_ESC
 } Key;
 

@@ -6,3 +6,15 @@ A 3D level editor that renders inside the terminal.
     make run
 
 `WASD` move, arrows look, `Esc` quit.
+
+Editing:
+
+    1   box           select box primitive
+    2   sphere        select sphere primitive
+    space             place primitive in front of the camera
+    x                 delete object under the crosshair
+    o                 save level to level.txt
+    l                 load level from level.txt
+
+Objects are boxes and spheres. The camera casts one ray per cell and
+keeps the nearest hit, so objects occlude the floor and each other.

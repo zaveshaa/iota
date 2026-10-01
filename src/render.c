@@ -1,5 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
-
 #include "render.h"
 
 #include <stdio.h>
@@ -10,6 +8,7 @@
 const char RENDER_RAMP[] = " .:-=+*#%@";
 
 static char *buf;
+static float *depth;
 static char *out;
 static int cols, rows;
 
@@ -23,24 +22,39 @@ void render_init(int c, int r) {
     cols = c;
     rows = r;
     buf = malloc((size_t)cols * (size_t)rows);
+    depth = malloc((size_t)cols * (size_t)rows * sizeof(float));
     out = malloc((size_t)cols * (size_t)rows + (size_t)rows * 2);
     render_clear();
 }
 
 void render_resize(int c, int r) {
     free(buf);
+    free(depth);
     free(out);
     render_init(c, r);
 }
 
 void render_clear(void) {
-    for (int i = 0; i < cols * rows; i++) buf[i] = ' ';
+    for (int i = 0; i < cols * rows; i++) {
+        buf[i] = ' ';
+        depth[i] = RENDER_FAR;
+    }
 }
 
 void render_put(int col, int row, char ch, float z) {
-    (void)z;
     if (col < 0 || col >= cols || row < 0 || row >= rows) return;
-    buf[row * cols + col] = ch;
+    int i = row * cols + col;
+    // closer wins, RENDER_FAR never does
+    if (z < depth[i]) {
+        buf[i] = ch;
+        depth[i] = z;
+    }
+}
+
+void render_text(int col, int row, const char *s) {
+    if (row < 0 || row >= rows) return;
+    // negative depth, so it always lands on top
+    for (int i = 0; s[i]; i++) render_put(col + i, row, s[i], -1.0f);
 }
 
 void render_present(void) {
