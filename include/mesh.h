@@ -4,18 +4,29 @@
 #include "vec3.h"
 
 #define MESH_MAX 16
-#define TRI_MAX  8192
 #define FACE_MAX 32
+#define LEAF     4
 
 typedef struct {
     Vec3 a, b, c;
 } Tri;
 
 typedef struct {
-    char name[64];
-    Tri tris[TRI_MAX];
-    int count;
     Vec3 lo, hi;
+    int left;   // -1 on a leaf
+    int right;
+    int start;  // slice of order
+    int count;
+} Node;
+
+typedef struct {
+    char name[64];
+    Tri *tris;
+    int count, cap;
+    Vec3 lo, hi;
+    Node *nodes;
+    int nodes_count, nodes_cap;
+    int *order;
 } Mesh;
 
 typedef struct {

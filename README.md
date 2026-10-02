@@ -25,7 +25,8 @@ Editing:
 Meshes are Wavefront OBJ. Put one path per line in `meshes.txt` and they
 load at startup; a level refers to a mesh by its file name and looks for it
 in `meshes/` if it is not loaded yet. Rendering hits the real triangles,
-walking uses the bounding box of the mesh.
+walking uses the bounding box of the mesh. Triangles go into a BVH at load
+time, so mesh size is not a problem.
 
 The camera casts one ray per cell and keeps the nearest hit, so objects
 occlude the floor and each other.
