@@ -10,7 +10,9 @@
 #define FOV    1.1f
 #define FOV_MIN 0.18f
 #define FOV_MAX 1.6f
-#define SS     2
+#define SS       2
+#define SS_SLOW  15   // ms a frame may take before we drop to one ray per cell
+#define SS_FAST   8
 #define STEP   0.12f
 #define WALK   0.08f
 #define TURN   0.03f
@@ -20,7 +22,7 @@
 #define GRAV   0.15f
 #define BODY   0.25f
 #define STEP_UP 0.7f
-#define FRAME_MS 33
+#define FRAME_MS 10   // only bites above 100 keys a second
 
 typedef enum { MODE_FLY, MODE_WALK } Mode;
 
@@ -61,27 +63,27 @@ static char shade_ray(Camera cam, const World *w, const Meshes *ms, Vec3 dir, Ve
     return RENDER_RAMP[render_shade((0.22f + 0.40f * lam + 0.38f * face) * fog)];
 }
 
-static void draw_scene(Camera cam, const World *w, const Meshes *ms, float fov, int cols, int rows) {
+static void draw_scene(Camera cam, const World *w, const Meshes *ms, float fov, int ss, int cols, int rows) {
     Vec3 fwd, right, up;
     cam_basis(cam, &fwd, &right, &up);
 
     Vec3 light = v3_norm(v3(0.45f, 0.85f, 0.3f));
     float aspect = (float)cols / (float)rows * 0.5f;
-    float dxs = 2.0f / (float)(cols - 1) * aspect / (float)SS;
-    float dys = 2.0f / (float)(rows - 1) / (float)SS;
+    float dxs = 2.0f / (float)(cols - 1) * aspect / (float)ss;
+    float dys = 2.0f / (float)(rows - 1) / (float)ss;
 
     for (int row = 0; row < rows; row++) {
         float sy0 = 1.0f - 2.0f * (float)row / (float)(rows - 1);
         for (int col = 0; col < cols; col++) {
             float sx0 = (2.0f * (float)col / (float)(cols - 1) - 1.0f) * aspect;
 
-            // SS x SS rays per cell, the closest sample wins
+            // ss x ss rays per cell, the closest sample wins
             float bt = RENDER_FAR;
             char ch = RENDER_SKY;
-            for (int j = 0; j < SS; j++) {
-                float sy = sy0 + ((float)j - (SS - 1) * 0.5f) * dys;
-                for (int i = 0; i < SS; i++) {
-                    float sx = sx0 + ((float)i - (SS - 1) * 0.5f) * dxs;
+            for (int j = 0; j < ss; j++) {
+                float sy = sy0 + ((float)j - (ss - 1) * 0.5f) * dys;
+                for (int i = 0; i < ss; i++) {
+                    float sx = sx0 + ((float)i - (ss - 1) * 0.5f) * dxs;
                     Vec3 dir = v3_norm(v3_add(fwd, v3_add(v3_scale(right, sx * fov), v3_scale(up, sy * fov))));
                     float t;
                     char c = shade_ray(cam, w, ms, dir, light, fwd, &t);
@@ -296,7 +298,8 @@ int main(void) {
     int cols = term_cols(), rows = term_rows();
     render_init(cols, rows);
 
-    struct timespec drawn = {0, 0};
+    struct timespec drawn = {0, 0}, mark = {0, 0};
+    int ss = SS;
     for (;;) {
         int changed = apply(&cam, &world, &meshes, &type, &pick, &mode, &fov, term_read_key());
         if (changed == 0) break;
@@ -315,20 +318,31 @@ int main(void) {
         // no input and no resize, so there is nothing new to draw
         if (changed < 0) continue;
 
-        // hold the frame rate, a held key must not peg the cpu
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        long late = (drawn.tv_sec - now.tv_sec) * 1000 + (drawn.tv_nsec - now.tv_nsec) / 1000000;
-        if (late < FRAME_MS) {
-            struct timespec rest = {0, (FRAME_MS - late) * 1000000L};
-            nanosleep(&rest, NULL);
-        }
+        clock_gettime(CLOCK_MONOTONIC, &mark);
 
         render_clear();
-        draw_scene(cam, &world, &meshes, fov, cols, rows);
+        draw_scene(cam, &world, &meshes, fov, ss, cols, rows);
         draw_hud(&world, &meshes, type, pick, mode, fov, rows);
         render_present();
-        clock_gettime(CLOCK_MONOTONIC, &drawn);
+
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long cost = (now.tv_sec - mark.tv_sec) * 1000 + (now.tv_nsec - mark.tv_nsec) / 1000000;
+
+        // supersampling is the first thing to go when a frame gets slow
+        if (cost > SS_SLOW) ss = 1;
+        else if (cost < SS_FAST) ss = SS;
+
+        // a flood of input gets throttled here, anything slower than a
+        // hundred keys a second is never held back
+        long gap = (now.tv_sec - drawn.tv_sec) * 1000 + (now.tv_nsec - drawn.tv_nsec) / 1000000;
+        if (gap < FRAME_MS) {
+            struct timespec rest = {0, (FRAME_MS - gap) * 1000000L};
+            nanosleep(&rest, NULL);
+            clock_gettime(CLOCK_MONOTONIC, &drawn);
+        } else {
+            drawn = now;
+        }
     }
 
     render_free();

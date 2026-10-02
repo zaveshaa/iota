@@ -39,5 +39,6 @@ geometry survives and objects occlude the floor and each other. Surfaces get
 one directional light plus a dim fill from the viewer, which keeps characters
 readable when they face the camera.
 
-A frame is drawn only when a key arrived or the window changed size, and the
-frame rate is capped, so an idle editor costs no cpu.
+A frame is drawn only when a key arrived or the window changed size, so an
+idle editor costs no cpu. Supersampling drops to a single ray per cell when a
+frame takes longer than 15 ms, which keeps a large terminal window responsive.
