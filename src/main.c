@@ -7,26 +7,30 @@
 #include <stdio.h>
 #include <time.h>
 
-#define FOV    1.1f
-#define FOV_MIN 0.18f
-#define FOV_MAX 1.6f
+#define FOV      1.1f
+#define FOV_MIN  0.18f
+#define FOV_MAX  1.6f
 #define SS       2
-#define SS_SLOW  15   // ms a frame may take before we drop to one ray per cell
-#define SS_FAST   8
-#define STEP   0.12f
-#define WALK   0.08f
-#define TURN   0.03f
+#define SS_SLOW  15
+#define SS_FAST  8
+#define FRAME_MS 10
+#define STEP     0.12f
+#define WALK     0.08f
+#define TURN     0.03f
 #define PITCH_MAX 1.5f
-#define REACH  4.0f
-#define EYE    1.7f
-#define GRAV   0.15f
-#define BODY   0.25f
-#define STEP_UP 0.7f
-#define FRAME_MS 10   // only bites above 100 keys a second
+#define REACH    4.0f
+#define EYE      1.7f
+#define GRAV     0.15f
+#define BODY     0.25f
+#define STEP_UP  0.7f
 
 typedef enum { MODE_FLY, MODE_WALK } Mode;
 
 static const char *LEVEL_PATH = "level.txt";
+
+static long ms_between(struct timespec a, struct timespec b) {
+    return (a.tv_sec - b.tv_sec) * 1000 + (a.tv_nsec - b.tv_nsec) / 1000000;
+}
 
 // what one ray sees, sky writes RENDER_FAR
 static char shade_ray(Camera cam, const World *w, const Meshes *ms, Vec3 dir, Vec3 light, Vec3 fwd, float *t) {
@@ -298,7 +302,7 @@ int main(void) {
     int cols = term_cols(), rows = term_rows();
     render_init(cols, rows);
 
-    struct timespec drawn = {0, 0}, mark = {0, 0};
+    struct timespec drawn = {0, 0}, mark;
     int ss = SS;
     for (;;) {
         int changed = apply(&cam, &world, &meshes, &type, &pick, &mode, &fov, term_read_key());
@@ -327,15 +331,15 @@ int main(void) {
 
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
-        long cost = (now.tv_sec - mark.tv_sec) * 1000 + (now.tv_nsec - mark.tv_nsec) / 1000000;
 
         // supersampling is the first thing to go when a frame gets slow
+        long cost = ms_between(now, mark);
         if (cost > SS_SLOW) ss = 1;
         else if (cost < SS_FAST) ss = SS;
 
         // a flood of input gets throttled here, anything slower than a
         // hundred keys a second is never held back
-        long gap = (now.tv_sec - drawn.tv_sec) * 1000 + (now.tv_nsec - drawn.tv_nsec) / 1000000;
+        long gap = ms_between(now, drawn);
         if (gap < FRAME_MS) {
             struct timespec rest = {0, (FRAME_MS - gap) * 1000000L};
             nanosleep(&rest, NULL);
