@@ -39,4 +39,9 @@ int mesh_list(Meshes *ms, const char *path);
 int mesh_find(const Meshes *ms, const char *name);
 int mesh_tri_hit(const Mesh *m, Vec3 o, Vec3 d, float *t, Vec3 *n);
 
+void mesh_init(Mesh *m, const char *path);
+int mesh_add(Mesh *m, Vec3 a, Vec3 b, Vec3 c);
+int mesh_build(Mesh *m);
+void mesh_free(Mesh *m);
+
 #endif

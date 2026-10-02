@@ -1,5 +1,7 @@
 #include "mesh.h"
 
+#include "gltf.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,8 +28,19 @@ static int node_new(Mesh *m) {
     return m->nodes_count++;
 }
 
-static void push_tri(Mesh *m, Vec3 a, Vec3 b, Vec3 c) {
-    if (!tri_reserve(m)) return;
+void mesh_init(Mesh *m, const char *path) {
+    memset(m, 0, sizeof *m);
+    m->lo = v3(1e30f, 1e30f, 1e30f);
+    m->hi = v3(-1e30f, -1e30f, -1e30f);
+
+    const char *slash = strrchr(path, '/');
+    snprintf(m->name, sizeof m->name, "%s", slash ? slash + 1 : path);
+    char *dot = strchr(m->name, '.');
+    if (dot) *dot = '\0';
+}
+
+int mesh_add(Mesh *m, Vec3 a, Vec3 b, Vec3 c) {
+    if (!tri_reserve(m)) return 0;
     m->tris[m->count].a = a;
     m->tris[m->count].b = b;
     m->tris[m->count].c = c;
@@ -42,33 +55,54 @@ static void push_tri(Mesh *m, Vec3 a, Vec3 b, Vec3 c) {
         if (vs[i].y > m->hi.y) m->hi.y = vs[i].y;
         if (vs[i].z > m->hi.z) m->hi.z = vs[i].z;
     }
+    return 1;
 }
 
-// median split on the longest axis, order[] holds triangle ids
-static int split_axis;
+// centroid per triangle, reused by every split
+static Vec3 *cent;
 
-static float axis_of(const Tri *t, int a) {
-    return a == 0 ? (t->a.x + t->b.x + t->c.x) / 3.0f
-         : a == 1 ? (t->a.y + t->b.y + t->c.y) / 3.0f
-                  : (t->a.z + t->b.z + t->c.z) / 3.0f;
+static float pick(int tri, int axis) {
+    return axis == 0 ? cent[tri].x : axis == 1 ? cent[tri].y : cent[tri].z;
 }
 
-static const Tri *g_tris;
-
-static int by_axis(const void *pa, const void *pb) {
-    float x = axis_of(&g_tris[*(const int *)pa], split_axis);
-    float y = axis_of(&g_tris[*(const int *)pb], split_axis);
-    return x < y ? -1 : x > y;
+static float axis_val(Vec3 c, int axis) {
+    return axis == 0 ? c.x : axis == 1 ? c.y : c.z;
 }
 
+// hoare split, leaves everything below the pivot in front
+static void partition(Mesh *m, int start, int count, int axis, float pivot, int *k) {
+    int i = start, j = start + count - 1;
+    while (i <= j) {
+        while (i <= j && pick(m->order[i], axis) < pivot) i++;
+        while (i <= j && pick(m->order[j], axis) > pivot) j--;
+        if (i <= j) {
+            int t = m->order[i];
+            m->order[i] = m->order[j];
+            m->order[j] = t;
+            i++;
+            j--;
+        }
+    }
+    *k = i - start;
+}
+
+// split the slice on the longest centroid axis, midpoint pivot
 static int build(Mesh *m, int start, int count) {
     int ni = node_new(m);
     if (ni < 0) return -1;
 
     Vec3 lo = v3(1e30f, 1e30f, 1e30f), hi = v3(-1e30f, -1e30f, -1e30f);
+    Vec3 clo = v3(1e30f, 1e30f, 1e30f), chi = v3(-1e30f, -1e30f, -1e30f);
     for (int i = 0; i < count; i++) {
         const Tri *t = &m->tris[m->order[start + i]];
         Vec3 vs[3] = {t->a, t->b, t->c};
+        Vec3 c = v3_scale(v3_add(v3_add(t->a, t->b), t->c), 1.0f / 3.0f);
+        if (c.x < clo.x) clo.x = c.x;
+        if (c.y < clo.y) clo.y = c.y;
+        if (c.z < clo.z) clo.z = c.z;
+        if (c.x > chi.x) chi.x = c.x;
+        if (c.y > chi.y) chi.y = c.y;
+        if (c.z > chi.z) chi.z = c.z;
         for (int k = 0; k < 3; k++) {
             if (vs[k].x < lo.x) lo.x = vs[k].x;
             if (vs[k].y < lo.y) lo.y = vs[k].y;
@@ -89,44 +123,54 @@ static int build(Mesh *m, int start, int count) {
         return ni;
     }
 
-    float ex = hi.x - lo.x, ey = hi.y - lo.y, ez = hi.z - lo.z;
-    split_axis = (ex > ey && ex > ez) ? 0 : (ey > ez ? 1 : 2);
-    g_tris = m->tris;
-    qsort(m->order + start, (size_t)count, sizeof(int), by_axis);
+    float cx = chi.x - clo.x, cy = chi.y - clo.y, cz = chi.z - clo.z;
+    int axis = (cx > cy && cx > cz) ? 0 : (cy > cz ? 1 : 2);
+    float pivot = (axis_val(clo, axis) + axis_val(chi, axis)) * 0.5f;
 
-    int mid = count / 2;
-    int l = build(m, start, mid);
-    int r = build(m, mid, count - mid);
-    // recursion may have moved the array, so write through the index
+    int k = 0;
+    partition(m, start, count, axis, pivot, &k);
+    if (k <= 0 || k >= count) k = count / 2;
+
+    int l = build(m, start, k);
+    int r = build(m, start + k, count - k);
+    // recursion grows the node array, so write through the index
     m->nodes[ni].left = l;
     m->nodes[ni].right = r;
     m->nodes[ni].count = 0;
     return ni;
 }
 
-static void mesh_build(Mesh *m) {
+int mesh_build(Mesh *m) {
+    free(m->order);
     m->order = malloc(sizeof(int) * (size_t)m->count);
-    if (!m->order) return;
-    for (int i = 0; i < m->count; i++) m->order[i] = i;
+    cent = malloc(sizeof(Vec3) * (size_t)m->count);
+    if (!m->order || !cent) return 0;
+    for (int i = 0; i < m->count; i++) {
+        m->order[i] = i;
+        cent[i] = v3_scale(v3_add(v3_add(m->tris[i].a, m->tris[i].b), m->tris[i].c), 1.0f / 3.0f);
+    }
     m->nodes_count = 0;
-    build(m, 0, m->count);
+    int root = build(m, 0, m->count);
+    free(cent);
+    cent = NULL;
+    return root >= 0;
+}
+
+void mesh_free(Mesh *m) {
+    free(m->tris);
+    free(m->nodes);
+    free(m->order);
+    memset(m, 0, sizeof *m);
 }
 
 // positions first, then fan every face
-int mesh_load(Meshes *ms, const char *path) {
+static int obj_load(Meshes *ms, const char *path) {
     if (ms->count >= MESH_MAX) return -1;
     FILE *f = fopen(path, "r");
     if (!f) return -1;
 
     Mesh *m = &ms->items[ms->count];
-    memset(m, 0, sizeof *m);
-    m->lo = v3(1e30f, 1e30f, 1e30f);
-    m->hi = v3(-1e30f, -1e30f, -1e30f);
-
-    const char *slash = strrchr(path, '/');
-    snprintf(m->name, sizeof m->name, "%s", slash ? slash + 1 : path);
-    char *dot = strchr(m->name, '.');
-    if (dot) *dot = '\0';
+    mesh_init(m, path);
 
     int vcap = 1024, vn = 0;
     Vec3 *verts = malloc(sizeof(Vec3) * (size_t)vcap);
@@ -161,7 +205,12 @@ int mesh_load(Meshes *ms, const char *path) {
                 if (idx[0] < 0 || idx[0] >= vn) break;
                 if (idx[i] < 0 || idx[i] >= vn) continue;
                 if (idx[i + 1] < 0 || idx[i + 1] >= vn) continue;
-                push_tri(m, verts[idx[0]], verts[idx[i]], verts[idx[i + 1]]);
+                if (!mesh_add(m, verts[idx[0]], verts[idx[i]], verts[idx[i + 1]])) {
+                    free(verts);
+                    fclose(f);
+                    mesh_free(m);
+                    return -1;
+                }
             }
         }
     }
@@ -169,9 +218,17 @@ int mesh_load(Meshes *ms, const char *path) {
     free(verts);
     fclose(f);
 
-    if (m->count == 0) return -1;
-    mesh_build(m);
+    if (m->count == 0 || !mesh_build(m)) {
+        mesh_free(m);
+        return -1;
+    }
     return ms->count++;
+}
+
+int mesh_load(Meshes *ms, const char *path) {
+    const char *dot = strrchr(path, '.');
+    if (dot && strcmp(dot, ".glb") == 0) return gltf_load(ms, path);
+    return obj_load(ms, path);
 }
 
 // one path per line, blank lines and # skipped

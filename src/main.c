@@ -25,7 +25,7 @@ typedef enum { MODE_FLY, MODE_WALK } Mode;
 static const char *LEVEL_PATH = "level.txt";
 
 // what one ray sees, sky writes RENDER_FAR
-static char shade_ray(Camera cam, const World *w, const Meshes *ms, Vec3 dir, Vec3 light, float *t) {
+static char shade_ray(Camera cam, const World *w, const Meshes *ms, Vec3 dir, Vec3 light, Vec3 fwd, float *t) {
     Hit best = {RENDER_FAR, -1, v3(0.0f, 1.0f, 0.0f)};
 
     if (dir.y < -0.0001f) {
@@ -51,10 +51,12 @@ static char shade_ray(Camera cam, const World *w, const Meshes *ms, Vec3 dir, Ve
         return (g > 0.015f && g < 0.035f) ? '|' : RENDER_RAMP[render_shade(fog * 0.7f)];
     }
 
-    // lambert against the light, times fog
-    float d = v3_dot(best.normal, light);
-    if (d < 0.0f) d = 0.0f;
-    return RENDER_RAMP[render_shade((0.30f + 0.70f * d) * fog)];
+    // lambert from above plus a fill from the viewer, times fog
+    float lam = v3_dot(best.normal, light);
+    if (lam < 0.0f) lam = 0.0f;
+    float face = -v3_dot(best.normal, fwd);
+    if (face < 0.0f) face = 0.0f;
+    return RENDER_RAMP[render_shade((0.22f + 0.40f * lam + 0.38f * face) * fog)];
 }
 
 static void draw_scene(Camera cam, const World *w, const Meshes *ms, float fov, int cols, int rows) {
@@ -80,7 +82,7 @@ static void draw_scene(Camera cam, const World *w, const Meshes *ms, float fov, 
                     float sx = sx0 + ((float)i - (SS - 1) * 0.5f) * dxs;
                     Vec3 dir = v3_norm(v3_add(fwd, v3_add(v3_scale(right, sx * fov), v3_scale(up, sy * fov))));
                     float t;
-                    char c = shade_ray(cam, w, ms, dir, light, &t);
+                    char c = shade_ray(cam, w, ms, dir, light, fwd, &t);
                     if (t < bt) { bt = t; ch = c; }
                 }
             }

@@ -3,7 +3,7 @@ CFLAGS    = -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -Wall -Wextra -Iinclude
 LDFLAGS   = -lm
 
 BIN     ?= iota
-SRC      = src/main.c src/term.c src/render.c src/camera.c src/world.c src/mesh.c
+SRC      = src/main.c src/term.c src/render.c src/camera.c src/world.c src/mesh.c src/gltf.c src/json.c
 
 all: $(BIN)
 
