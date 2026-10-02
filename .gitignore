@@ -1,3 +1,5 @@
 iota
 *.o
 level.txt
+meshes.txt
+meshes/

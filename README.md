@@ -13,12 +13,19 @@ onto anything lower.
 
 Editing:
 
-    1   box           select box primitive
-    2   sphere        select sphere primitive
-    space             place primitive in front of the camera
-    x                 delete object under the crosshair
-    o                 save level to level.txt
-    l                 load level from level.txt
+    1              select box primitive
+    2              select sphere primitive
+    3              select mesh
+    , .            pick which loaded mesh
+    space          place object in front of the camera
+    x              delete object under the crosshair
+    o              save level to level.txt
+    l              load level from level.txt
 
-Objects are boxes and spheres. The camera casts one ray per cell and
-keeps the nearest hit, so objects occlude the floor and each other.
+Meshes are Wavefront OBJ. Put one path per line in `meshes.txt` and they
+load at startup; a level refers to a mesh by its file name and looks for it
+in `meshes/` if it is not loaded yet. Rendering hits the real triangles,
+walking uses the bounding box of the mesh.
+
+The camera casts one ray per cell and keeps the nearest hit, so objects
+occlude the floor and each other.

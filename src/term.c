@@ -101,6 +101,9 @@ Key term_read_key(void) {
         case 'x': case 'X': return KEY_DEL;
         case '1':           return KEY_BOX;
         case '2':           return KEY_SPHERE;
+        case '3':           return KEY_MESH;
+        case ',':           return KEY_PREV;
+        case '.':           return KEY_NEXT;
         case 'o': case 'O': return KEY_SAVE;
         case 'l': case 'L': return KEY_LOAD;
         case '\t':          return KEY_TAB;

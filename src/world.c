@@ -82,17 +82,26 @@ static int hit_sphere(const Obj *o, Vec3 ro, Vec3 rd, float *tout, Vec3 *nout) {
     return 1;
 }
 
-int world_cast(const World *w, Vec3 origin, Vec3 dir, float max_t, Hit *hit) {
+int world_cast(const World *w, const Meshes *ms, Vec3 origin, Vec3 dir, float max_t, Hit *hit) {
     float best = max_t;
     int found = 0;
 
     // nearest object along the ray wins
     for (int i = 0; i < w->count; i++) {
+        const Obj *o = &w->items[i];
         float t;
         Vec3 n;
         int ok;
-        if (w->items[i].type == OBJ_BOX) ok = hit_box(&w->items[i], origin, dir, &t, &n);
-        else                              ok = hit_sphere(&w->items[i], origin, dir, &t, &n);
+
+        if (o->type == OBJ_BOX) {
+            ok = hit_box(o, origin, dir, &t, &n);
+        } else if (o->type == OBJ_SPHERE) {
+            ok = hit_sphere(o, origin, dir, &t, &n);
+        } else {
+            // triangles live in local space, pull the origin back
+            ok = ms && o->mesh >= 0 && o->mesh < ms->count &&
+                 mesh_tri_hit(&ms->items[o->mesh], v3_sub(origin, o->pos), dir, &t, &n);
+        }
         if (!ok || t <= 0.0f) continue;
         if (t < best) {
             best = t;
@@ -105,7 +114,24 @@ int world_cast(const World *w, Vec3 origin, Vec3 dir, float max_t, Hit *hit) {
     return found;
 }
 
-int world_save(const World *w, const char *path) {
+// box and mesh both answer with a box
+int world_bounds(const World *w, const Meshes *ms, const Obj *o, Vec3 *lo, Vec3 *hi) {
+    (void)w;
+    if (o->type == OBJ_BOX) {
+        *lo = v3_sub(o->pos, o->half);
+        *hi = v3_add(o->pos, o->half);
+        return 1;
+    }
+    if (o->type == OBJ_MESH && ms && o->mesh >= 0 && o->mesh < ms->count) {
+        const Mesh *m = &ms->items[o->mesh];
+        *lo = v3_add(m->lo, o->pos);
+        *hi = v3_add(m->hi, o->pos);
+        return 1;
+    }
+    return 0;
+}
+
+int world_save(const World *w, const Meshes *ms, const char *path) {
     FILE *f = fopen(path, "w");
     if (!f) return -1;
     fprintf(f, "# iota level\n");
@@ -115,35 +141,51 @@ int world_save(const World *w, const char *path) {
             fprintf(f, "box %.3f %.3f %.3f %.3f %.3f %.3f\n",
                     (double)o->pos.x, (double)o->pos.y, (double)o->pos.z,
                     (double)o->half.x, (double)o->half.y, (double)o->half.z);
-        else
+        else if (o->type == OBJ_SPHERE)
             fprintf(f, "sphere %.3f %.3f %.3f %.3f\n",
                     (double)o->pos.x, (double)o->pos.y, (double)o->pos.z,
                     (double)o->half.x);
+        else if (ms && o->mesh >= 0 && o->mesh < ms->count)
+            fprintf(f, "mesh %s %.3f %.3f %.3f\n", ms->items[o->mesh].name,
+                    (double)o->pos.x, (double)o->pos.y, (double)o->pos.z);
     }
     fclose(f);
     return 0;
 }
 
-int world_load(World *w, const char *path) {
+int world_load(World *w, Meshes *ms, const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return -1;
 
     world_init(w);
     char line[256];
     while (fgets(line, sizeof(line), f)) {
-        Obj o;
+        Obj o = {v3(0.0f, 0.0f, 0.0f), v3(0.0f, 0.0f, 0.0f), -1, OBJ_BOX};
         if (line[0] == '#' || line[0] == '\n') continue;
+
         if (sscanf(line, "box %f %f %f %f %f %f",
                    &o.pos.x, &o.pos.y, &o.pos.z,
                    &o.half.x, &o.half.y, &o.half.z) == 6) {
             o.type = OBJ_BOX;
-            world_add(w, o);
         } else if (sscanf(line, "sphere %f %f %f %f",
                           &o.pos.x, &o.pos.y, &o.pos.z, &o.half.x) == 4) {
             o.half = v3(o.half.x, o.half.x, o.half.x);
             o.type = OBJ_SPHERE;
-            world_add(w, o);
+        } else {
+            char name[64];
+            if (sscanf(line, "mesh %63s %f %f %f", name, &o.pos.x, &o.pos.y, &o.pos.z) != 4)
+                continue;
+            o.mesh = mesh_find(ms, name);
+            if (o.mesh < 0) {
+                // look for it next to the program
+                char p[256];
+                snprintf(p, sizeof(p), "meshes/%s.obj", name);
+                o.mesh = mesh_load(ms, p);
+            }
+            if (o.mesh < 0) continue;
+            o.type = OBJ_MESH;
         }
+        world_add(w, o);
     }
     fclose(f);
     return 0;
