@@ -76,7 +76,7 @@ Key term_read_key(void) {
     if (poll(&pfd, 1, 16) <= 0) return KEY_NONE;
 
     char c;
-    if (read(STDIN_FILENO, &c, 1) != 1) return KEY_NONE;
+    if (read(STDIN_FILENO, &c, 1) != 1) return KEY_EOF;
 
     if (c == 27) {
         char seq[2];

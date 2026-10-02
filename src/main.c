@@ -5,6 +5,7 @@
 #include "world.h"
 
 #include <stdio.h>
+#include <time.h>
 
 #define FOV    1.1f
 #define FOV_MIN 0.18f
@@ -19,6 +20,7 @@
 #define GRAV   0.15f
 #define BODY   0.25f
 #define STEP_UP 0.7f
+#define FRAME_MS 33
 
 typedef enum { MODE_FLY, MODE_WALK } Mode;
 
@@ -176,8 +178,11 @@ static void step_walk(Camera *cam, const World *w, const Meshes *ms, Vec3 fwd, V
     cam->pos = p;
 }
 
-static int handle(Camera *cam, World *w, Meshes *ms, ObjType *type, int *pick, Mode *mode, float *fov) {
-    Key k = term_read_key();
+// returns 0 to quit, 1 when the view has to be redrawn, -1 when nothing happened
+static int apply(Camera *cam, World *w, Meshes *ms, ObjType *type, int *pick, Mode *mode, float *fov, Key k) {
+    if (k == KEY_EOF) return 0;
+    if (k == KEY_NONE) return -1;
+
     Vec3 fwd, right, up;
     cam_basis(*cam, &fwd, &right, &up);
 
@@ -291,7 +296,11 @@ int main(void) {
     int cols = term_cols(), rows = term_rows();
     render_init(cols, rows);
 
+    struct timespec drawn = {0, 0};
     for (;;) {
+        int changed = apply(&cam, &world, &meshes, &type, &pick, &mode, &fov, term_read_key());
+        if (changed == 0) break;
+
         if (term_dirty()) {
             int c = term_cols(), r = term_rows();
             if (c != cols || r != rows) {
@@ -300,14 +309,26 @@ int main(void) {
                 rows = r;
             }
             term_clean();
+            changed = 1;
         }
 
-        if (!handle(&cam, &world, &meshes, &type, &pick, &mode, &fov)) break;
+        // no input and no resize, so there is nothing new to draw
+        if (changed < 0) continue;
+
+        // hold the frame rate, a held key must not peg the cpu
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long late = (drawn.tv_sec - now.tv_sec) * 1000 + (drawn.tv_nsec - now.tv_nsec) / 1000000;
+        if (late < FRAME_MS) {
+            struct timespec rest = {0, (FRAME_MS - late) * 1000000L};
+            nanosleep(&rest, NULL);
+        }
 
         render_clear();
         draw_scene(cam, &world, &meshes, fov, cols, rows);
         draw_hud(&world, &meshes, type, pick, mode, fov, rows);
         render_present();
+        clock_gettime(CLOCK_MONOTONIC, &drawn);
     }
 
     render_free();

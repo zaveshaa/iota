@@ -18,7 +18,8 @@ typedef enum {
     KEY_SAVE, KEY_LOAD,
     KEY_TAB,
     KEY_ZOOM_IN, KEY_ZOOM_OUT,
-    KEY_ESC
+    KEY_ESC,
+    KEY_EOF
 } Key;
 
 Key term_read_key(void);

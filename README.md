@@ -38,3 +38,6 @@ The camera casts four rays per cell and keeps the nearest hit, so thin
 geometry survives and objects occlude the floor and each other. Surfaces get
 one directional light plus a dim fill from the viewer, which keeps characters
 readable when they face the camera.
+
+A frame is drawn only when a key arrived or the window changed size, and the
+frame rate is capped, so an idle editor costs no cpu.
