@@ -7,6 +7,9 @@
 #include <stdio.h>
 
 #define FOV    1.1f
+#define FOV_MIN 0.18f
+#define FOV_MAX 1.6f
+#define SS     2
 #define STEP   0.12f
 #define WALK   0.08f
 #define TURN   0.03f
@@ -21,53 +24,68 @@ typedef enum { MODE_FLY, MODE_WALK } Mode;
 
 static const char *LEVEL_PATH = "level.txt";
 
-static void draw_scene(Camera cam, const World *w, const Meshes *ms, int cols, int rows) {
+// what one ray sees, sky writes RENDER_FAR
+static char shade_ray(Camera cam, const World *w, const Meshes *ms, Vec3 dir, Vec3 light, float *t) {
+    Hit best = {RENDER_FAR, -1, v3(0.0f, 1.0f, 0.0f)};
+
+    if (dir.y < -0.0001f) {
+        float tf = -cam.pos.y / dir.y;
+        if (tf > 0.0f && tf < best.t) { best.t = tf; best.obj = -1; }
+    }
+
+    Hit oh;
+    if (world_cast(w, ms, cam.pos, dir, 120.0f, &oh) && oh.t < best.t) best = oh;
+
+    *t = best.t;
+    if (best.t >= RENDER_FAR * 0.5f) return RENDER_SKY;
+
+    float fog = 1.0f - best.t / 32.0f;
+    if (fog < 0.0f) fog = 0.0f;
+
+    if (best.obj < 0) {
+        // floor: shade with fog, cross the grid with '|'
+        Vec3 hit = v3_add(cam.pos, v3_scale(dir, best.t));
+        float gx = __builtin_fabsf(hit.x - __builtin_roundf(hit.x));
+        float gz = __builtin_fabsf(hit.z - __builtin_roundf(hit.z));
+        float g = gx < gz ? gx : gz;
+        return (g > 0.015f && g < 0.035f) ? '|' : RENDER_RAMP[render_shade(fog * 0.7f)];
+    }
+
+    // lambert against the light, times fog
+    float d = v3_dot(best.normal, light);
+    if (d < 0.0f) d = 0.0f;
+    return RENDER_RAMP[render_shade((0.30f + 0.70f * d) * fog)];
+}
+
+static void draw_scene(Camera cam, const World *w, const Meshes *ms, float fov, int cols, int rows) {
     Vec3 fwd, right, up;
     cam_basis(cam, &fwd, &right, &up);
 
     Vec3 light = v3_norm(v3(0.45f, 0.85f, 0.3f));
     float aspect = (float)cols / (float)rows * 0.5f;
+    float dxs = 2.0f / (float)(cols - 1) * aspect / (float)SS;
+    float dys = 2.0f / (float)(rows - 1) / (float)SS;
 
     for (int row = 0; row < rows; row++) {
-        float sy = 1.0f - 2.0f * (float)row / (float)(rows - 1);
+        float sy0 = 1.0f - 2.0f * (float)row / (float)(rows - 1);
         for (int col = 0; col < cols; col++) {
-            // one ray per cell
-            float sx = (2.0f * (float)col / (float)(cols - 1) - 1.0f) * aspect;
-            Vec3 dir = v3_norm(v3_add(fwd, v3_add(v3_scale(right, sx * FOV), v3_scale(up, sy * FOV))));
+            float sx0 = (2.0f * (float)col / (float)(cols - 1) - 1.0f) * aspect;
 
-            Hit best = {RENDER_FAR, -1, v3(0.0f, 1.0f, 0.0f)};
-
-            if (dir.y < -0.0001f) {
-                float tf = -cam.pos.y / dir.y;
-                if (tf > 0.0f && tf < best.t) { best.t = tf; best.obj = -1; }
+            // SS x SS rays per cell, the closest sample wins
+            float bt = RENDER_FAR;
+            char ch = RENDER_SKY;
+            for (int j = 0; j < SS; j++) {
+                float sy = sy0 + ((float)j - (SS - 1) * 0.5f) * dys;
+                for (int i = 0; i < SS; i++) {
+                    float sx = sx0 + ((float)i - (SS - 1) * 0.5f) * dxs;
+                    Vec3 dir = v3_norm(v3_add(fwd, v3_add(v3_scale(right, sx * fov), v3_scale(up, sy * fov))));
+                    float t;
+                    char c = shade_ray(cam, w, ms, dir, light, &t);
+                    if (t < bt) { bt = t; ch = c; }
+                }
             }
 
-            Hit oh;
-            if (world_cast(w, ms, cam.pos, dir, 120.0f, &oh) && oh.t < best.t) best = oh;
-
-            if (best.t >= RENDER_FAR * 0.5f) {
-                render_put(col, row, RENDER_SKY, RENDER_FAR);
-                continue;
-            }
-
-            float fog = 1.0f - best.t / 32.0f;
-            if (fog < 0.0f) fog = 0.0f;
-
-            if (best.obj < 0) {
-                // floor: shade with fog, cross the grid with '|'
-                Vec3 hit = v3_add(cam.pos, v3_scale(dir, best.t));
-                float gx = __builtin_fabsf(hit.x - __builtin_roundf(hit.x));
-                float gz = __builtin_fabsf(hit.z - __builtin_roundf(hit.z));
-                float g = gx < gz ? gx : gz;
-                char ch = (g > 0.015f && g < 0.035f) ? '|' : RENDER_RAMP[render_shade(fog * 0.7f)];
-                render_put(col, row, ch, best.t);
-            } else {
-                // lambert against the light, times fog
-                float d = v3_dot(best.normal, light);
-                if (d < 0.0f) d = 0.0f;
-                float s = (0.35f + 0.65f * d) * fog;
-                render_put(col, row, RENDER_RAMP[render_shade(s)], best.t);
-            }
+            render_put(col, row, ch, bt);
         }
     }
 
@@ -156,7 +174,7 @@ static void step_walk(Camera *cam, const World *w, const Meshes *ms, Vec3 fwd, V
     cam->pos = p;
 }
 
-static int handle(Camera *cam, World *w, Meshes *ms, ObjType *type, int *pick, Mode *mode) {
+static int handle(Camera *cam, World *w, Meshes *ms, ObjType *type, int *pick, Mode *mode, float *fov) {
     Key k = term_read_key();
     Vec3 fwd, right, up;
     cam_basis(*cam, &fwd, &right, &up);
@@ -187,6 +205,9 @@ static int handle(Camera *cam, World *w, Meshes *ms, ObjType *type, int *pick, M
         case KEY_BOX:    *type = OBJ_BOX; break;
         case KEY_SPHERE: *type = OBJ_SPHERE; break;
         case KEY_MESH:   *type = OBJ_MESH; break;
+
+        case KEY_ZOOM_IN:  if (*fov > FOV_MIN) *fov -= 0.08f; break;
+        case KEY_ZOOM_OUT: if (*fov < FOV_MAX) *fov += 0.08f; break;
 
         case KEY_PREV:
             if (*pick > 0) (*pick)--;
@@ -233,7 +254,7 @@ static int handle(Camera *cam, World *w, Meshes *ms, ObjType *type, int *pick, M
     return 1;
 }
 
-static void draw_hud(const World *w, const Meshes *ms, ObjType type, int pick, Mode mode, int rows) {
+static void draw_hud(const World *w, const Meshes *ms, ObjType type, int pick, Mode mode, float fov, int rows) {
     char what[64];
     if (type == OBJ_BOX)        snprintf(what, sizeof(what), "box");
     else if (type == OBJ_SPHERE) snprintf(what, sizeof(what), "sphere");
@@ -242,8 +263,8 @@ static void draw_hud(const World *w, const Meshes *ms, ObjType type, int pick, M
 
     char hud[256];
     snprintf(hud, sizeof(hud),
-             " [tab] %s  [1] box  [2] sphere  [3] mesh (,/.) = %s   [space] place  [x] del  [o] save  [l] load  n=%d ",
-             mode == MODE_FLY ? "fly" : "walk", what, w->count);
+             " [tab] %s  [= -] zoom %.2f  [1] box  [2] sphere  [3] mesh (,/.) = %s   [space] place  [x] del  [o] save  [l] load  n=%d ",
+             mode == MODE_FLY ? "fly" : "walk", fov, what, w->count);
     render_text(0, rows - 1, hud);
 }
 
@@ -254,6 +275,7 @@ int main(void) {
     ObjType type = OBJ_BOX;
     Mode mode = MODE_FLY;
     int pick = 0;
+    float fov = FOV;
 
     static Meshes meshes;
     meshes.count = 0;
@@ -278,11 +300,11 @@ int main(void) {
             term_clean();
         }
 
-        if (!handle(&cam, &world, &meshes, &type, &pick, &mode)) break;
+        if (!handle(&cam, &world, &meshes, &type, &pick, &mode, &fov)) break;
 
         render_clear();
-        draw_scene(cam, &world, &meshes, cols, rows);
-        draw_hud(&world, &meshes, type, pick, mode, rows);
+        draw_scene(cam, &world, &meshes, fov, cols, rows);
+        draw_hud(&world, &meshes, type, pick, mode, fov, rows);
         render_present();
     }
 

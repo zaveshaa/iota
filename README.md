@@ -5,7 +5,8 @@ A 3D level editor that renders inside the terminal.
 
     make run
 
-`WASD` move, arrows look, `Esc` quit, `Tab` switch between fly and walk.
+`WASD` move, arrows look, `Esc` quit, `Tab` switch between fly and walk,
+`=` and `-` zoom.
 
 Fly ignores gravity. Walk keeps the camera at eye height, falls when there
 is nothing underfoot, walks around anything taller than a step and steps
@@ -28,5 +29,5 @@ in `meshes/` if it is not loaded yet. Rendering hits the real triangles,
 walking uses the bounding box of the mesh. Triangles go into a BVH at load
 time, so mesh size is not a problem.
 
-The camera casts one ray per cell and keeps the nearest hit, so objects
-occlude the floor and each other.
+The camera casts four rays per cell and keeps the nearest hit, so thin
+geometry survives and objects occlude the floor and each other.

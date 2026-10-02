@@ -17,6 +17,7 @@ typedef enum {
     KEY_PREV, KEY_NEXT,
     KEY_SAVE, KEY_LOAD,
     KEY_TAB,
+    KEY_ZOOM_IN, KEY_ZOOM_OUT,
     KEY_ESC
 } Key;
 

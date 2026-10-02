@@ -107,6 +107,8 @@ Key term_read_key(void) {
         case 'o': case 'O': return KEY_SAVE;
         case 'l': case 'L': return KEY_LOAD;
         case '\t':          return KEY_TAB;
+        case '=': case '+': return KEY_ZOOM_IN;
+        case '-': case '_': return KEY_ZOOM_OUT;
         default:  return KEY_NONE;
     }
 }
