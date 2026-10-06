@@ -87,7 +87,7 @@ static void cast_checks(const Scene *s)
     check(v3_dot(h.normal, v3(0.0f, 1.0f, 0.0f)) > 0.99f,
           "the floor normal points up", detail);
 
-    h = cast_ray(s, v3(-1.0f, 1.0f, 4.5f), v3(1.0f, 0.0f, 0.0f), 100.0f);
+    h = cast_ray(s, v3(-0.5f, 0.7f, 2.8f), v3(1.0f, 0.0f, 0.0f), 100.0f);
     check(h.action == HIT_MIRROR, "the sphere asks for a bounce", NULL);
     (void)snprintf(detail, sizeof detail, "normal is (%.3f, %.3f, %.3f)",
                    (double)h.normal.x, (double)h.normal.y,
@@ -98,10 +98,17 @@ static void cast_checks(const Scene *s)
                    (double)rd.x, (double)rd.y, (double)rd.z);
     check(rd.x < -0.99f, "the ray bounces back the way it came", detail);
 
+    h = cast_ray(s, v3(0.0f, 1.7f, -1.4f), v3(0.0f, 0.0f, 1.0f), 100.0f);
+    (void)snprintf(detail, sizeof detail, "normal is (%.3f, %.3f, %.3f)",
+                   (double)h.normal.x, (double)h.normal.y,
+                   (double)h.normal.z);
+    check(h.action == HIT_MIRROR && h.normal.z < -0.99f,
+          "the wall holds a mirror facing the room", detail);
+
     h = cast_ray(s, v3(0.0f, 5.0f, 0.0f), v3(0.0f, 1.0f, 0.0f), 100.0f);
     check(h.action == HIT_NONE, "a ray up meets only sky", NULL);
 
-    h = cast_ray(s, v3(-2.0f, 1.0f, 2.0f), v3(0.0f, 0.0f, 1.0f), 100.0f);
+    h = cast_ray(s, v3(-2.4f, 1.0f, 1.0f), v3(0.0f, 0.0f, 1.0f), 100.0f);
     check(h.action == HIT_CONTINUE && h.obj != NULL &&
               h.obj->ink == RGB(224, 144, 64),
           "a ray at the pillar finds the orange box", NULL);
@@ -190,7 +197,8 @@ int main(int argc, char **argv)
         return 1;
     }
     view_render(&scene, &cam, r, 1, 0.0f, &st);
-    check(st.depth_max == 1, "the mirror bounces exactly once", NULL);
+    check(st.depth_max >= 1 && st.depth_max <= VIEW_MAX_DEPTH,
+          "mirrors bounce within the depth we promised", NULL);
     check(st.rays > (unsigned)(GOLD_COLS * GOLD_ROWS) &&
               st.rays < (unsigned)(GOLD_COLS * GOLD_ROWS) * 3u,
           "the mirror adds rays without doubling them", NULL);
