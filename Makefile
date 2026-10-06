@@ -9,20 +9,21 @@ ifeq ($(WERROR),1)
 WARN     += -Werror
 endif
 
-BIN     ?= iota
-SRC      =
+BIN      ?= iota
+CORE      = src/term.c src/render.c src/world.c src/cast.c src/view.c \
+            src/engine.c src/scene.c
+SRC       = $(CORE) demos/mirror.c
+HDR       = $(wildcard include/*.h)
 
 all: $(BIN)
 
-$(BIN): $(SRC) $(wildcard include/*.h)
-	@test -n "$(SRC)" || exit 0
+$(BIN): $(SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
 
 run: $(BIN)
 	./$(BIN)
 
 install: $(BIN)
-	@test -f $(BIN) || exit 0
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 755 $(BIN) $(DESTDIR)$(PREFIX)/bin
 
@@ -30,7 +31,7 @@ help:
 	@echo "iota — a ray tracer that renders inside the terminal"
 	@echo ""
 	@echo "  make            build $(BIN)"
-	@echo "  make run        run it"
+	@echo "  make run        watch a mirror on the wall"
 	@echo "  make install    install into $(DESTDIR)$(PREFIX)/bin"
 	@echo "  make clean      remove the build"
 
