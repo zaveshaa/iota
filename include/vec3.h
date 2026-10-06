@@ -30,6 +30,11 @@ static inline Vec3 v3_mul(Vec3 a, float s)
     return v3(a.x * s, a.y * s, a.z * s);
 }
 
+static inline Vec3 v3_had(Vec3 a, Vec3 b)
+{
+    return v3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+
 static inline float v3_dot(Vec3 a, Vec3 b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
