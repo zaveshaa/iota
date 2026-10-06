@@ -8,12 +8,26 @@
 #define KEY_WINDOW 0.16
 #define PITCH_MAX 1.48f
 #define MOVE_SPEED 3.0f
+#define TURN_SPEED 2.0f
+#define PITCH_SPEED 1.3f
+
+enum {
+    KEY_W,
+    KEY_A,
+    KEY_S,
+    KEY_D,
+    KEY_TURN_LEFT,
+    KEY_TURN_RIGHT,
+    KEY_LOOK_UP,
+    KEY_LOOK_DOWN,
+    KEY_COUNT
+};
 
 typedef struct {
     Scene scene;
     Camera cam;
     ViewStats stats;
-    double press[4];
+    double press[KEY_COUNT];
 } App;
 
 static float clamp_pitch(float p)
@@ -42,28 +56,28 @@ static void app_poll(Engine *e)
             engine_quit(e);
             break;
         case KEY_LEFT:
-            a->cam.yaw -= 0.09f;
+            a->press[KEY_TURN_LEFT] = now;
             break;
         case KEY_RIGHT:
-            a->cam.yaw += 0.09f;
+            a->press[KEY_TURN_RIGHT] = now;
             break;
         case KEY_UP:
-            a->cam.pitch = clamp_pitch(a->cam.pitch + 0.07f);
+            a->press[KEY_LOOK_UP] = now;
             break;
         case KEY_DOWN:
-            a->cam.pitch = clamp_pitch(a->cam.pitch - 0.07f);
+            a->press[KEY_LOOK_DOWN] = now;
             break;
         case 'w':
-            a->press[0] = now;
+            a->press[KEY_W] = now;
             break;
         case 'a':
-            a->press[1] = now;
+            a->press[KEY_A] = now;
             break;
         case 's':
-            a->press[2] = now;
+            a->press[KEY_S] = now;
             break;
         case 'd':
-            a->press[3] = now;
+            a->press[KEY_D] = now;
             break;
         default:
             break;
@@ -80,24 +94,30 @@ static void app_sim(Engine *e, float dt)
     Vec3 fwd = v3(cp * sinf(a->cam.yaw), sinf(a->cam.pitch),
                   cp * cosf(a->cam.yaw));
     Vec3 right = v3_norm(v3_cross(fwd, v3(0.0f, 1.0f, 0.0f)));
+    Vec3 dirs[4];
     int i;
 
-    for (i = 0; i < 4; i++) {
-        Vec3 dir;
+    dirs[KEY_W] = fwd;
+    dirs[KEY_A] = v3_mul(right, -1.0f);
+    dirs[KEY_S] = v3_mul(fwd, -1.0f);
+    dirs[KEY_D] = right;
 
-        if (now - a->press[i] >= KEY_WINDOW) {
-            continue;
+    for (i = 0; i < 4; i++) {
+        if (now - a->press[i] < KEY_WINDOW) {
+            a->cam.pos = v3_add(a->cam.pos, v3_mul(dirs[i], step));
         }
-        if (i == 0) {
-            dir = fwd;
-        } else if (i == 1) {
-            dir = v3_mul(right, -1.0f);
-        } else if (i == 2) {
-            dir = v3_mul(fwd, -1.0f);
-        } else {
-            dir = right;
-        }
-        a->cam.pos = v3_add(a->cam.pos, v3_mul(dir, step));
+    }
+    if (now - a->press[KEY_TURN_LEFT] < KEY_WINDOW) {
+        a->cam.yaw += TURN_SPEED * dt;
+    }
+    if (now - a->press[KEY_TURN_RIGHT] < KEY_WINDOW) {
+        a->cam.yaw -= TURN_SPEED * dt;
+    }
+    if (now - a->press[KEY_LOOK_UP] < KEY_WINDOW) {
+        a->cam.pitch = clamp_pitch(a->cam.pitch + PITCH_SPEED * dt);
+    }
+    if (now - a->press[KEY_LOOK_DOWN] < KEY_WINDOW) {
+        a->cam.pitch = clamp_pitch(a->cam.pitch - PITCH_SPEED * dt);
     }
 }
 
