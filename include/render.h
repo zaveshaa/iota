@@ -3,10 +3,6 @@
 
 typedef struct Render Render;
 
-#define RGB(r, g, b)                                                       \
-    ((((unsigned)(r) & 0xffu) << 16) | (((unsigned)(g) & 0xffu) << 8) |   \
-     ((unsigned)(b) & 0xffu))
-
 Render *render_open(int cols, int rows);
 void render_close(Render *r);
 void render_resize(Render *r, int cols, int rows);
