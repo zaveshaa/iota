@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-static const char g_ramp[] = " .:-=+*#%@";
+static const char g_ramp[] = VIEW_RAMP;
 
 typedef struct {
     const Scene *s;

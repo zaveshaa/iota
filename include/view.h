@@ -7,6 +7,7 @@
 
 #define VIEW_MAX_DEPTH 2
 #define VIEW_BUDGET_MS 11.0
+#define VIEW_RAMP " .:-=+*#%@"
 
 typedef struct {
     Vec3 pos;
