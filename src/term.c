@@ -1,7 +1,7 @@
 #include "term.h"
 
 #include <errno.h>
-#include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +11,6 @@
 
 struct Term {
     struct termios saved;
-    int stdin_flags;
     int open;
 };
 
@@ -19,8 +18,22 @@ static struct Term g_term;
 
 static void term_write(const char *s, size_t n)
 {
-    ssize_t wr = write(STDOUT_FILENO, s, n);
-    (void)wr;
+    size_t off = 0;
+
+    while (off < n) {
+        ssize_t wr = write(STDOUT_FILENO, s + off, n - off);
+
+        if (wr < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
+        }
+        if (wr == 0) {
+            break;
+        }
+        off += (size_t)wr;
+    }
 }
 
 static void term_puts(const char *s)
@@ -36,9 +49,6 @@ void term_close(void)
     g_term.open = 0;
     term_puts("\x1b[?25h\x1b[?1049l");
     if (tcsetattr(STDIN_FILENO, TCSANOW, &g_term.saved) != 0) {
-        /* nothing left to do about it */
-    }
-    if (fcntl(STDIN_FILENO, F_SETFL, g_term.stdin_flags) != 0) {
         /* nothing left to do about it */
     }
 }
@@ -80,12 +90,6 @@ Term *term_open(void)
     if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
         return NULL;
     }
-    g_term.stdin_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    if (g_term.stdin_flags < 0 ||
-        fcntl(STDIN_FILENO, F_SETFL, g_term.stdin_flags | O_NONBLOCK) != 0) {
-        (void)tcsetattr(STDIN_FILENO, TCSANOW, &g_term.saved);
-        return NULL;
-    }
     g_term.open = 1;
     if (atexit(term_close) != 0) {
         term_close();
@@ -123,8 +127,16 @@ int term_rows(void)
 int term_read_key(void)
 {
     unsigned char buf[8];
-    ssize_t n = read(STDIN_FILENO, buf, sizeof buf);
+    struct pollfd pfd;
+    ssize_t n;
 
+    pfd.fd = STDIN_FILENO;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+    if (poll(&pfd, 1, 0) <= 0) {
+        return KEY_NONE;
+    }
+    n = read(STDIN_FILENO, buf, sizeof buf);
     if (n <= 0) {
         return KEY_NONE;
     }

@@ -1,5 +1,6 @@
 #include "render.h"
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -185,8 +186,23 @@ void render_present(Render *r)
         }
     }
     if (p > buf) {
-        ssize_t wr = write(STDOUT_FILENO, buf, (size_t)(p - buf));
-        (void)wr;
+        size_t total = (size_t)(p - buf);
+        size_t off = 0;
+
+        while (off < total) {
+            ssize_t wr = write(STDOUT_FILENO, buf + off, total - off);
+
+            if (wr < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                break;
+            }
+            if (wr == 0) {
+                break;
+            }
+            off += (size_t)wr;
+        }
     }
     free(buf);
 }
