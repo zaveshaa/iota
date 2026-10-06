@@ -10,25 +10,27 @@ WARN     += -Werror
 endif
 
 BIN     ?= iota
-SRC      = src/main.c src/term.c src/render.c src/camera.c src/world.c src/mesh.c src/gltf.c src/json.c
+SRC      =
 
 all: $(BIN)
 
 $(BIN): $(SRC) $(wildcard include/*.h)
+	@test -n "$(SRC)" || exit 0
 	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
 
 run: $(BIN)
 	./$(BIN)
 
 install: $(BIN)
+	@test -f $(BIN) || exit 0
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 755 $(BIN) $(DESTDIR)$(PREFIX)/bin
 
 help:
-	@echo "iota — a 3D level editor that renders inside the terminal"
+	@echo "iota — a ray tracer that renders inside the terminal"
 	@echo ""
 	@echo "  make            build $(BIN)"
-	@echo "  make run        run the editor"
+	@echo "  make run        run it"
 	@echo "  make install    install into $(DESTDIR)$(PREFIX)/bin"
 	@echo "  make clean      remove the build"
 

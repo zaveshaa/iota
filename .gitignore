@@ -1,16 +1,7 @@
-# the program, built in the place it is built
+# the programs, built in the place they are built
 /iota
+/golden
 *.o
-
-# written while it runs
-level.txt
-meshes/
-meshes.txt
-
-# built here by the other branches
-/fishing
-/shooter
-/pmovetest
 
 # macOS
 .DS_Store
