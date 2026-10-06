@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: build with warnings fatal
+        run: make WERROR=1 all
+
+      - name: install into a throwaway prefix
+        run: make install DESTDIR="$RUNNER_TEMP/stage" PREFIX=/usr/local
