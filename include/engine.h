@@ -21,6 +21,5 @@ void *engine_user(Engine *e);
 double engine_time(const Engine *e);
 double engine_draw_ms(const Engine *e);
 int engine_ss(const Engine *e);
-unsigned engine_frame(const Engine *e);
 
 #endif

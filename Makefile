@@ -4,7 +4,7 @@ CFLAGS    = -std=c11 -D_POSIX_C_SOURCE=200809L -O2 $(WARN) -Iinclude
 LDFLAGS   = -lm
 PREFIX   ?= /usr/local
 
-# make WERROR=1 makes every warning a failure, which is how CI builds
+# CI builds with WERROR=1
 ifeq ($(WERROR),1)
 WARN     += -Werror
 endif

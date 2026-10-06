@@ -15,7 +15,6 @@ struct Engine {
     double draw_ms;
     int quit;
     int ss;
-    unsigned frame;
 };
 
 static double now_sec(void)
@@ -94,11 +93,6 @@ int engine_ss(const Engine *e)
     return e->ss;
 }
 
-unsigned engine_frame(const Engine *e)
-{
-    return e->frame;
-}
-
 static void engine_resize(Engine *e)
 {
     int cols = term_cols();
@@ -159,7 +153,6 @@ void engine_run(Engine *e)
         } else if (e->draw_ms > 11.5 && e->ss == 2) {
             e->ss = 1;
         }
-        e->frame++;
 
         {
             double iter = now_sec() - iter_start;
@@ -170,9 +163,7 @@ void engine_run(Engine *e)
 
                 ts.tv_sec = 0;
                 ts.tv_nsec = (long)(left * 1000000000.0);
-                if (nanosleep(&ts, NULL) != 0) {
-                    /* an early wake-up costs us nothing */
-                }
+                (void)nanosleep(&ts, NULL);
             }
         }
     }

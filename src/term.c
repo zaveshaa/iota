@@ -48,9 +48,7 @@ void term_close(void)
     }
     g_term.open = 0;
     term_puts("\x1b[?25h\x1b[?1049l");
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &g_term.saved) != 0) {
-        /* nothing left to do about it */
-    }
+    (void)tcsetattr(STDIN_FILENO, TCSANOW, &g_term.saved);
 }
 
 static void term_on_signal(int sig)
@@ -96,9 +94,7 @@ Term *term_open(void)
         return NULL;
     }
     for (i = 0; i < sizeof fatal / sizeof fatal[0]; i++) {
-        if (signal(fatal[i], term_on_signal) == SIG_ERR) {
-            /* a missing handler only costs us a restored terminal */
-        }
+        (void)signal(fatal[i], term_on_signal);
     }
     term_puts("\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H");
     return &g_term;
