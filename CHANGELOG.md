@@ -21,6 +21,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   whatever the frame rate the terminal holds.
 - A mesh is solid where it stands: a body walks into the box around it and
   stands on the box's top.
+- The jump is a little stronger, so the range's pillars are low enough to hop
+  onto and the walk flows over them instead of into a wall.
 
 ### Fixed
 
@@ -28,6 +30,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   instead of stopping and starting inside it.
 - `d` walks to the right and `a` to the left, as the view has them.
 - The walking range has the mirror it was missing.
+- A jump catches a ledge a step cannot reach, instead of sliding up a face
+  that is too tall to get over.
 - The walk demo's gem floats clear of a high jump, instead of swallowing the
   eye when it climbs.
 

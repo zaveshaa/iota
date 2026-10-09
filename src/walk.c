@@ -6,13 +6,18 @@
 #define MAX_STEP (1.0f / 240.0f)
 
 #define GRAVITY 18.0f
-#define JUMP_VEL 5.4f
+#define JUMP_VEL 6.7f
 #define GROUND_ACCEL 60.0f
 #define AIR_ACCEL 3.0f
 #define AIR_WISH_CAP 6.0f
 #define FRICTION 4.0f
 #define FRICTION_STOP 16.0f
 #define STOP_SPEED 0.25f
+
+// how far past its edge a body may reach and still catch the top of a box: a
+// body pressed against a face sits at exactly half + radius from the centre,
+// so the catch wants a little room past that
+#define EDGE 0.01f
 
 static void apply_friction(Vec3 *vel, float dt, float rate, int stop)
 {
@@ -139,7 +144,8 @@ static Vec3 depenetrate(const Scene *s, const Meshes *ms, Vec3 p, float radius,
     return v3_sub(p, start);
 }
 
-static float ground_scan(const Scene *s, const Meshes *ms, Vec3 p, float below)
+static float ground_scan(const Scene *s, const Meshes *ms, Vec3 p, float below,
+                         float radius)
 {
     float g = -1e30f;
     int i;
@@ -159,10 +165,10 @@ static float ground_scan(const Scene *s, const Meshes *ms, Vec3 p, float below)
             }
             top = o->pos.y + sqrtf(r * r - d2);
         } else if (o->kind == OBJ_BOX) {
-            if (fabsf(p.x - o->pos.x) > o->half.x) {
+            if (fabsf(p.x - o->pos.x) > o->half.x + radius + EDGE) {
                 continue;
             }
-            if (fabsf(p.z - o->pos.z) > o->half.z) {
+            if (fabsf(p.z - o->pos.z) > o->half.z + radius + EDGE) {
                 continue;
             }
             top = o->pos.y + o->half.y;
@@ -173,10 +179,10 @@ static float ground_scan(const Scene *s, const Meshes *ms, Vec3 p, float below)
             if (!mesh_box(o, ms, &center, &half)) {
                 continue;
             }
-            if (fabsf(p.x - center.x) > half.x) {
+            if (fabsf(p.x - center.x) > half.x + radius + EDGE) {
                 continue;
             }
-            if (fabsf(p.z - center.z) > half.z) {
+            if (fabsf(p.z - center.z) > half.z + radius + EDGE) {
                 continue;
             }
             top = center.y + half.y;
@@ -230,7 +236,7 @@ static void walk_substep(const Scene *s, const Meshes *ms, Walk *w, Vec3 wish,
 
     p.y += w->vel.y * dt;
     {
-        float ground = ground_scan(s, ms, p, p.y + w->step);
+        float ground = ground_scan(s, ms, p, p.y + w->step, w->radius);
 
         if (p.y <= ground) {
             p.y = ground;

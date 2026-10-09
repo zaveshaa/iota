@@ -174,6 +174,20 @@ static void mesh_wall(void)
           "a body lands on a mesh and stands on it");
 }
 
+static void jump_onto(void)
+{
+    Scene t;
+    Walk w;
+
+    floor_scene(&t);
+    add_box(&t, v3(1.0f, 0.75f, 0.0f), v3(0.5f, 0.75f, 0.5f));
+    w = make_walk(v3(0.6f, 0.0f, 0.0f));
+    w.jump = 1;
+    run(&w, &t, NULL, v3(0.0f, 0.0f, 0.0f), 0.8f);
+    check(w.on_ground && w.pos.y > 1.49f && w.pos.y < 1.51f,
+          "a body jumps onto a ledge it cannot walk up");
+}
+
 int main(void)
 {
     Scene s;
@@ -182,6 +196,7 @@ int main(void)
     rest_and_speed(&s);
     steps_and_walls(&s);
     mesh_wall();
+    jump_onto();
     (void)printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures != 0;
 }

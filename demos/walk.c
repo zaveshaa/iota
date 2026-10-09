@@ -59,16 +59,16 @@ static void build_range(Scene *s, int gem)
 
     add_box(s, v3(0.0f, 0.5f, 8.5f), v3(8.0f, 2.5f, 0.25f),
             RGB(76, 84, 104))->flags = OBJ_MIRROR;
-    add_box(s, v3(-2.4f, 1.0f, 2.0f), v3(0.5f, 1.0f, 0.5f),
+    add_box(s, v3(-2.4f, 0.75f, 2.0f), v3(0.5f, 0.75f, 0.5f),
             RGB(224, 144, 64));
-    add_box(s, v3(2.4f, 1.0f, 2.0f), v3(0.5f, 1.0f, 0.5f),
+    add_box(s, v3(2.4f, 0.75f, 2.0f), v3(0.5f, 0.75f, 0.5f),
             RGB(70, 180, 220));
 
     if (gem >= 0) {
         Obj *o = scene_add_obj(s);
 
         o->kind = OBJ_MESH;
-        o->pos = v3(2.4f, 3.5f, 2.0f);
+        o->pos = v3(0.0f, 5.0f, 0.0f);
         o->ink = RGB(220, 130, 230);
         o->mesh = gem;
     } else {
