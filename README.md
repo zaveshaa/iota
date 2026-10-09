@@ -9,7 +9,15 @@
 </p>
 
 <p align="center">
-  MIT · C11 · no dependencies · macOS and Linux
+  <a href="https://github.com/zaveshaa/iota/actions/workflows/ci.yml"><img
+     src="https://github.com/zaveshaa/iota/actions/workflows/ci.yml/badge.svg"
+     alt="ci"></a>
+  <a href="LICENSE"><img
+     src="https://img.shields.io/badge/licence-MIT-blue.svg"
+     alt="licence: MIT"></a>
+  <img src="https://img.shields.io/badge/C-C11-blue.svg" alt="C11">
+  <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg"
+       alt="no dependencies">
 </p>
 
 ## Overview
@@ -68,6 +76,13 @@ the budget runs out the frame stops at the fog, the status line says
     src/        the engine
     demos/      the scenes
     assets/     the mark
+
+## Version
+
+iota follows [Semantic Versioning](https://semver.org). The current release is
+`0.1.0`, kept in `include/engine.h` as `IOTA_VERSION`; every release is a tag
+and a note in [CHANGELOG.md](CHANGELOG.md). See [CONTRIBUTING.md](CONTRIBUTING.md)
+to help.
 
 ## License
 
