@@ -24,6 +24,7 @@ Obj *scene_add_obj(Scene *s)
     o->kind = OBJ_BOX;
     o->ink = RGB(200, 200, 200);
     o->axis = v3(0.0f, 1.0f, 0.0f);
+    o->mesh = -1;
     return o;
 }
 

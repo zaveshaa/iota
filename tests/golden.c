@@ -75,7 +75,7 @@ static void cast_checks(const Scene *s)
     Hit h;
     Vec3 rd;
 
-    h = cast_ray(s, v3(0.0f, 2.0f, 0.0f), v3(0.0f, -1.0f, 0.0f), 100.0f);
+    h = cast_ray(s, NULL, v3(0.0f, 2.0f, 0.0f), v3(0.0f, -1.0f, 0.0f), 100.0f);
     check(h.action == HIT_CONTINUE, "a ray down hits the floor", NULL);
     (void)snprintf(detail, sizeof detail, "t is %.3f, wanted 2.000",
                    (double)h.t);
@@ -87,7 +87,7 @@ static void cast_checks(const Scene *s)
     check(v3_dot(h.normal, v3(0.0f, 1.0f, 0.0f)) > 0.99f,
           "the floor normal points up", detail);
 
-    h = cast_ray(s, v3(-0.5f, 0.7f, 2.8f), v3(1.0f, 0.0f, 0.0f), 100.0f);
+    h = cast_ray(s, NULL, v3(-0.5f, 0.7f, 2.8f), v3(1.0f, 0.0f, 0.0f), 100.0f);
     check(h.action == HIT_MIRROR, "the sphere asks for a bounce", NULL);
     (void)snprintf(detail, sizeof detail, "normal is (%.3f, %.3f, %.3f)",
                    (double)h.normal.x, (double)h.normal.y,
@@ -98,22 +98,22 @@ static void cast_checks(const Scene *s)
                    (double)rd.x, (double)rd.y, (double)rd.z);
     check(rd.x < -0.99f, "the ray bounces back the way it came", detail);
 
-    h = cast_ray(s, v3(0.0f, 1.7f, -1.4f), v3(0.0f, 0.0f, 1.0f), 100.0f);
+    h = cast_ray(s, NULL, v3(0.0f, 1.7f, -1.4f), v3(0.0f, 0.0f, 1.0f), 100.0f);
     (void)snprintf(detail, sizeof detail, "normal is (%.3f, %.3f, %.3f)",
                    (double)h.normal.x, (double)h.normal.y,
                    (double)h.normal.z);
     check(h.action == HIT_MIRROR && h.normal.z < -0.99f,
           "the wall holds a mirror facing the room", detail);
 
-    h = cast_ray(s, v3(0.0f, 5.0f, 0.0f), v3(0.0f, 1.0f, 0.0f), 100.0f);
+    h = cast_ray(s, NULL, v3(0.0f, 5.0f, 0.0f), v3(0.0f, 1.0f, 0.0f), 100.0f);
     check(h.action == HIT_NONE, "a ray up meets only sky", NULL);
 
-    h = cast_ray(s, v3(-2.4f, 1.0f, 1.0f), v3(0.0f, 0.0f, 1.0f), 100.0f);
+    h = cast_ray(s, NULL, v3(-2.4f, 1.0f, 1.0f), v3(0.0f, 0.0f, 1.0f), 100.0f);
     check(h.action == HIT_CONTINUE && h.obj != NULL &&
               h.obj->ink == RGB(224, 144, 64),
           "a ray at the pillar finds the orange box", NULL);
 
-    h = cast_ray(s, v3(0.0f, 1.5f, 5.0f),
+    h = cast_ray(s, NULL, v3(0.0f, 1.5f, 5.0f),
                  v3_norm(v3(0.0f, -1.5f, 5.0f)), 100.0f);
     (void)snprintf(detail, sizeof detail, "hit z is %.3f", (double)h.point.z);
     check(h.point.z > 8.0f && h.point.z < 8.7f,
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
         (void)fprintf(stderr, "golden: no memory for the frame\n");
         return 1;
     }
-    view_render(&scene, &cam, r, 1, 0.0f, &st);
+    view_render(&scene, NULL, &cam, r, 1, 0.0f, &st);
     check(st.depth_max >= 1 && st.depth_max <= VIEW_MAX_DEPTH,
           "mirrors bounce within the depth we promised", NULL);
     check(st.rays > (unsigned)(GOLD_COLS * GOLD_ROWS) &&
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
             (void)fprintf(stderr, "golden: no memory for the frame\n");
             return 1;
         }
-        view_render(&scene, &cam, again, 1, 0.0f, &st2);
+        view_render(&scene, NULL, &cam, again, 1, 0.0f, &st2);
         {
             int same = 1;
 

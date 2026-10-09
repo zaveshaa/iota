@@ -2,6 +2,7 @@
 #define WORLD_H
 
 #include "light.h"
+#include "mesh.h"
 #include "vec3.h"
 
 #define RGB(r, g, b)                                                       \
@@ -11,7 +12,8 @@
 typedef enum {
     OBJ_BOX,
     OBJ_SPHERE,
-    OBJ_PLANE
+    OBJ_PLANE,
+    OBJ_MESH
 } ObjKind;
 
 enum {
@@ -26,6 +28,7 @@ typedef struct {
     Vec3 axis;
     unsigned ink;
     unsigned flags;
+    int mesh;
 } Obj;
 
 #define SCENE_MAX_OBJS 64

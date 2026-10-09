@@ -79,12 +79,16 @@ bounces deep, each bounce measured against the frame's time budget. When
 the budget runs out the frame stops at the fog, the status line says
 `BUDGET`, and the engine lowers the sample count for the next frame.
 
+Triangles are another surface. An OBJ loader reads them into a bounding
+volume hierarchy, and a ray casts against the ones it crosses, so a model
+files through a scene the way a box does.
+
 ## Layout
 
     include/    the engine's headers
     src/        the engine
     demos/      the scenes
-    assets/     the mark
+    assets/     the mark and a sample mesh
 
 ## Version
 

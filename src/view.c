@@ -7,6 +7,7 @@ static const char g_ramp[] = VIEW_RAMP;
 
 typedef struct {
     const Scene *s;
+    const Meshes *ms;
     double deadline;
     int no_deadline;
     int expired;
@@ -117,7 +118,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
             return cx->fog;
         }
     }
-    h = cast_ray(cx->s, origin, dir, 1e9f);
+    h = cast_ray(cx->s, cx->ms, origin, dir, 1e9f);
     if (h.action == HIT_NONE) {
         return cx->fog;
     }
@@ -135,8 +136,8 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     return col;
 }
 
-void view_render(const Scene *s, const Camera *cam, Render *r, int ss,
-                 float budget_ms, ViewStats *st)
+void view_render(const Scene *s, const Meshes *ms, const Camera *cam, Render *r,
+                 int ss, float budget_ms, ViewStats *st)
 {
     static Vec3 *buf;
     static size_t cap;
@@ -194,6 +195,7 @@ void view_render(const Scene *s, const Camera *cam, Render *r, int ss,
     aspect = (float)w / (float)h;
 
     cx.s = s;
+    cx.ms = ms;
     cx.no_deadline = budget_ms <= 0.0f;
     cx.deadline = cx.no_deadline ? 0.0 : now_ms() + (double)budget_ms;
     cx.expired = 0;

@@ -17,6 +17,7 @@ typedef struct {
     const Obj *obj;
 } Hit;
 
-Hit cast_ray(const Scene *s, Vec3 origin, Vec3 dir, float tmax);
+Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
+             float tmax);
 
 #endif

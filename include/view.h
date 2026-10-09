@@ -22,7 +22,7 @@ typedef struct {
     int budget_hit;
 } ViewStats;
 
-void view_render(const Scene *s, const Camera *cam, Render *r, int ss,
-                 float budget_ms, ViewStats *st);
+void view_render(const Scene *s, const Meshes *ms, const Camera *cam, Render *r,
+                 int ss, float budget_ms, ViewStats *st);
 
 #endif

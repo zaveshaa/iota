@@ -13,6 +13,7 @@
 
 typedef struct {
     Scene scene;
+    Meshes meshes;
     Camera cam;
     ViewStats stats;
     Input input;
@@ -92,7 +93,7 @@ static void app_draw(Engine *e)
     Render *r = engine_render(e);
     char line[96];
 
-    view_render(&a->scene, &a->cam, r, engine_ss(e),
+    view_render(&a->scene, &a->meshes, &a->cam, r, engine_ss(e),
                 (float)VIEW_BUDGET_MS, &a->stats);
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,

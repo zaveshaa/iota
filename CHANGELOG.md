@@ -12,6 +12,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and a key held in a scene is a key down until it does.
 - Meshes: an OBJ loader, a bounding volume hierarchy over the triangles, and a
   Moller-Trumbore ray test.
+- A scene can hold a mesh, so a ray casts against its triangles and the walk
+  demo hangs a loaded gem over the range.
 
 ### Changed
 

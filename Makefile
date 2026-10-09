@@ -11,7 +11,7 @@ endif
 
 BIN      ?= iota
 CORE      = src/term.c src/render.c src/world.c src/cast.c src/view.c \
-            src/engine.c src/scene.c src/walk.c
+            src/engine.c src/scene.c src/walk.c src/mesh.c
 SRC       = $(CORE) demos/mirror.c
 TEST_BIN  ?= golden
 TEST_SRC   = $(CORE) tests/golden.c

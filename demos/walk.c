@@ -15,6 +15,7 @@
 
 typedef struct {
     Scene scene;
+    Meshes meshes;
     Camera cam;
     Walk player;
     ViewStats stats;
@@ -41,7 +42,7 @@ static Obj *add_box(Scene *s, Vec3 pos, Vec3 half, unsigned ink)
     return o;
 }
 
-static void build_range(Scene *s)
+static void build_range(Scene *s, int gem)
 {
     int i;
 
@@ -63,7 +64,14 @@ static void build_range(Scene *s)
     add_box(s, v3(2.4f, 1.0f, 2.0f), v3(0.5f, 1.0f, 0.5f),
             RGB(70, 180, 220));
 
-    {
+    if (gem >= 0) {
+        Obj *o = scene_add_obj(s);
+
+        o->kind = OBJ_MESH;
+        o->pos = v3(2.4f, 2.6f, 2.0f);
+        o->ink = RGB(220, 130, 230);
+        o->mesh = gem;
+    } else {
         Obj *o = scene_add_obj(s);
 
         o->kind = OBJ_SPHERE;
@@ -172,8 +180,8 @@ static void app_draw(Engine *e)
                   lerpf(a->prev_pos.z, a->player.pos.z, alpha));
     view.yaw = lerpf(a->prev_yaw, a->cam.yaw, alpha);
     view.pitch = lerpf(a->prev_pitch, a->cam.pitch, alpha);
-    view_render(&a->scene, &view, r, engine_ss(e), (float)VIEW_BUDGET_MS,
-                &a->stats);
+    view_render(&a->scene, &a->meshes, &view, r, engine_ss(e),
+                (float)VIEW_BUDGET_MS, &a->stats);
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,
                    engine_ss(e) == 2 ? " 2x" : "",
@@ -191,7 +199,7 @@ int main(void)
 
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
-    build_range(&a.scene);
+    build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;

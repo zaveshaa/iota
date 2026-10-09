@@ -99,7 +99,8 @@ static int ray_plane(Vec3 o, Vec3 d, Vec3 p, Vec3 n, float *t_out)
     return 1;
 }
 
-Hit cast_ray(const Scene *s, Vec3 origin, Vec3 dir, float tmax)
+Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
+             float tmax)
 {
     Hit best;
     int i;
@@ -126,6 +127,14 @@ Hit cast_ray(const Scene *s, Vec3 origin, Vec3 dir, float tmax)
             }
         } else if (o->kind == OBJ_BOX) {
             hit = ray_box(origin, dir, o->pos, o->half, &t, &n);
+        } else if (o->kind == OBJ_MESH) {
+            // the triangles live at the origin, so the ray is pulled back to the
+            // object's own frame and the hit distance is the world's already
+            if (ms != NULL && o->mesh >= 0 && o->mesh < ms->count) {
+                Vec3 local = v3_sub(origin, o->pos);
+
+                hit = mesh_tri_hit(&ms->items[o->mesh], local, dir, &t, &n);
+            }
         } else {
             hit = ray_plane(origin, dir, o->pos, o->axis, &t);
             if (hit) {
