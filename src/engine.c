@@ -88,6 +88,19 @@ double engine_draw_ms(const Engine *e)
     return e->draw_ms;
 }
 
+double engine_alpha(const Engine *e)
+{
+    double a = e->acc / STEP;
+
+    if (a < 0.0) {
+        return 0.0;
+    }
+    if (a > 1.0) {
+        return 1.0;
+    }
+    return a;
+}
+
 int engine_ss(const Engine *e)
 {
     return e->ss;

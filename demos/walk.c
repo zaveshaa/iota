@@ -32,7 +32,15 @@ typedef struct {
     Walk player;
     ViewStats stats;
     double press[KEY_COUNT];
+    Vec3 prev_pos;
+    float prev_yaw;
+    float prev_pitch;
 } App;
+
+static float lerpf(float a, float b, float t)
+{
+    return a + (b - a) * t;
+}
 
 static void add_box(Scene *s, Vec3 pos, Vec3 half, unsigned ink)
 {
@@ -140,6 +148,10 @@ static void app_sim(Engine *e, float dt)
     Vec3 right = v3(cosf(a->cam.yaw), 0.0f, -sinf(a->cam.yaw));
     Vec3 wish = v3(0.0f, 0.0f, 0.0f);
 
+    a->prev_pos = a->player.pos;
+    a->prev_yaw = a->cam.yaw;
+    a->prev_pitch = a->cam.pitch;
+
     if (now - a->press[KEY_W] < KEY_WINDOW) {
         wish = v3_add(wish, fwd);
     }
@@ -182,9 +194,16 @@ static void app_draw(Engine *e)
 {
     App *a = engine_user(e);
     Render *r = engine_render(e);
+    Camera view = a->cam;
+    float alpha = (float)engine_alpha(e);
     char line[96];
 
-    view_render(&a->scene, &a->cam, r, engine_ss(e), (float)VIEW_BUDGET_MS,
+    view.pos = v3(lerpf(a->prev_pos.x, a->player.pos.x, alpha),
+                  lerpf(a->prev_pos.y, a->player.pos.y, alpha) + EYE,
+                  lerpf(a->prev_pos.z, a->player.pos.z, alpha));
+    view.yaw = lerpf(a->prev_yaw, a->cam.yaw, alpha);
+    view.pitch = lerpf(a->prev_pitch, a->cam.pitch, alpha);
+    view_render(&a->scene, &view, r, engine_ss(e), (float)VIEW_BUDGET_MS,
                 &a->stats);
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,

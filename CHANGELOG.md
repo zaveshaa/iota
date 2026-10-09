@@ -6,6 +6,11 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The frame is drawn between two simulation steps, so a body moves smoothly
+  whatever the frame rate the terminal holds.
+
 ## [0.1.0] - 2026-10-09
 
 ### Added
