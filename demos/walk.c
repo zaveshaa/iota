@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "input.h"
 #include "view.h"
 #include "walk.h"
 #include "world.h"
@@ -11,27 +12,14 @@
 #define TURN_SPEED 2.0f
 #define PITCH_SPEED 1.3f
 #define PITCH_MAX 1.4f
-#define KEY_WINDOW 0.16
-
-enum {
-    KEY_W,
-    KEY_A,
-    KEY_S,
-    KEY_D,
-    KEY_TURN_LEFT,
-    KEY_TURN_RIGHT,
-    KEY_LOOK_UP,
-    KEY_LOOK_DOWN,
-    KEY_JUMP,
-    KEY_COUNT
-};
 
 typedef struct {
     Scene scene;
     Camera cam;
     Walk player;
     ViewStats stats;
-    double press[KEY_COUNT];
+    Input input;
+    int want_jump;
     Vec3 prev_pos;
     float prev_yaw;
     float prev_pitch;
@@ -42,7 +30,7 @@ static float lerpf(float a, float b, float t)
     return a + (b - a) * t;
 }
 
-static void add_box(Scene *s, Vec3 pos, Vec3 half, unsigned ink)
+static Obj *add_box(Scene *s, Vec3 pos, Vec3 half, unsigned ink)
 {
     Obj *o = scene_add_obj(s);
 
@@ -50,6 +38,7 @@ static void add_box(Scene *s, Vec3 pos, Vec3 half, unsigned ink)
     o->pos = pos;
     o->half = half;
     o->ink = ink;
+    return o;
 }
 
 static void build_range(Scene *s)
@@ -68,7 +57,7 @@ static void build_range(Scene *s)
     }
 
     add_box(s, v3(0.0f, 0.5f, 8.5f), v3(8.0f, 2.5f, 0.25f),
-            RGB(76, 84, 104));
+            RGB(76, 84, 104))->flags = OBJ_MIRROR;
     add_box(s, v3(-2.4f, 1.0f, 2.0f), v3(0.5f, 1.0f, 0.5f),
             RGB(224, 144, 64));
     add_box(s, v3(2.4f, 1.0f, 2.0f), v3(0.5f, 1.0f, 0.5f),
@@ -102,37 +91,16 @@ static void app_poll(Engine *e)
         int lc = (k >= 'A' && k <= 'Z') ? k + 32 : k;
         double now = engine_time(e);
 
+        input_arrive(&a->input, lc, now);
         switch (lc) {
         case KEY_ESC:
         case 3:
             engine_quit(e);
             break;
-        case KEY_LEFT:
-            a->press[KEY_TURN_LEFT] = now;
-            break;
-        case KEY_RIGHT:
-            a->press[KEY_TURN_RIGHT] = now;
-            break;
-        case KEY_UP:
-            a->press[KEY_LOOK_UP] = now;
-            break;
-        case KEY_DOWN:
-            a->press[KEY_LOOK_DOWN] = now;
-            break;
         case ' ':
-            a->press[KEY_JUMP] = now;
-            break;
-        case 'w':
-            a->press[KEY_W] = now;
-            break;
-        case 'a':
-            a->press[KEY_A] = now;
-            break;
-        case 's':
-            a->press[KEY_S] = now;
-            break;
-        case 'd':
-            a->press[KEY_D] = now;
+            if (!term_key_released()) {
+                a->want_jump = 1;
+            }
             break;
         default:
             break;
@@ -145,38 +113,39 @@ static void app_sim(Engine *e, float dt)
     App *a = engine_user(e);
     double now = engine_time(e);
     Vec3 fwd = v3(sinf(a->cam.yaw), 0.0f, cosf(a->cam.yaw));
-    Vec3 right = v3(cosf(a->cam.yaw), 0.0f, -sinf(a->cam.yaw));
+    Vec3 right = v3(-cosf(a->cam.yaw), 0.0f, sinf(a->cam.yaw));
     Vec3 wish = v3(0.0f, 0.0f, 0.0f);
 
     a->prev_pos = a->player.pos;
     a->prev_yaw = a->cam.yaw;
     a->prev_pitch = a->cam.pitch;
 
-    if (now - a->press[KEY_W] < KEY_WINDOW) {
+    if (input_held(&a->input, 'w', now)) {
         wish = v3_add(wish, fwd);
     }
-    if (now - a->press[KEY_S] < KEY_WINDOW) {
+    if (input_held(&a->input, 's', now)) {
         wish = v3_sub(wish, fwd);
     }
-    if (now - a->press[KEY_D] < KEY_WINDOW) {
+    if (input_held(&a->input, 'd', now)) {
         wish = v3_add(wish, right);
     }
-    if (now - a->press[KEY_A] < KEY_WINDOW) {
+    if (input_held(&a->input, 'a', now)) {
         wish = v3_sub(wish, right);
     }
-    if (now - a->press[KEY_JUMP] < KEY_WINDOW) {
+    if (a->want_jump) {
         a->player.jump = 1;
+        a->want_jump = 0;
     }
-    if (now - a->press[KEY_TURN_LEFT] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_LEFT, now)) {
         a->cam.yaw += TURN_SPEED * dt;
     }
-    if (now - a->press[KEY_TURN_RIGHT] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_RIGHT, now)) {
         a->cam.yaw -= TURN_SPEED * dt;
     }
-    if (now - a->press[KEY_LOOK_UP] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_UP, now)) {
         a->cam.pitch += PITCH_SPEED * dt;
     }
-    if (now - a->press[KEY_LOOK_DOWN] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_DOWN, now)) {
         a->cam.pitch -= PITCH_SPEED * dt;
     }
     if (a->cam.pitch > PITCH_MAX) {
@@ -221,6 +190,7 @@ int main(void)
     Engine *e;
 
     memset(&a, 0, sizeof a);
+    input_clear(&a.input);
     build_range(&a.scene);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;

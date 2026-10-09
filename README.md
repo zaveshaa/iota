@@ -54,7 +54,8 @@ it, and the status line shows the millisecond cost, the ray count, the
 recursion depth and whether the budget was hit.
 
 `./walk` opens a test range. The body walks, climbs the stairs it can step
-onto, is stopped by the wall it cannot, and jumps.
+onto, is stopped by the wall it cannot, and jumps. The far wall is a mirror,
+so the range reflects back along it.
 
 ## Controls
 

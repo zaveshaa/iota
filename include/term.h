@@ -17,5 +17,7 @@ void term_close(void);
 int term_cols(void);
 int term_rows(void);
 int term_read_key(void);
+int term_keys_released(void);
+int term_key_released(void);
 
 #endif

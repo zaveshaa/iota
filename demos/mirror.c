@@ -1,33 +1,21 @@
 #include "engine.h"
+#include "input.h"
 #include "scene.h"
 #include "view.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#define KEY_WINDOW 0.16
 #define PITCH_MAX 1.48f
 #define MOVE_SPEED 3.0f
 #define TURN_SPEED 2.0f
 #define PITCH_SPEED 1.3f
 
-enum {
-    KEY_W,
-    KEY_A,
-    KEY_S,
-    KEY_D,
-    KEY_TURN_LEFT,
-    KEY_TURN_RIGHT,
-    KEY_LOOK_UP,
-    KEY_LOOK_DOWN,
-    KEY_COUNT
-};
-
 typedef struct {
     Scene scene;
     Camera cam;
     ViewStats stats;
-    double press[KEY_COUNT];
+    Input input;
 } App;
 
 static float clamp_pitch(float p)
@@ -50,34 +38,11 @@ static void app_poll(Engine *e)
         int lc = (k >= 'A' && k <= 'Z') ? k + 32 : k;
         double now = engine_time(e);
 
+        input_arrive(&a->input, lc, now);
         switch (lc) {
         case KEY_ESC:
         case 3:
             engine_quit(e);
-            break;
-        case KEY_LEFT:
-            a->press[KEY_TURN_LEFT] = now;
-            break;
-        case KEY_RIGHT:
-            a->press[KEY_TURN_RIGHT] = now;
-            break;
-        case KEY_UP:
-            a->press[KEY_LOOK_UP] = now;
-            break;
-        case KEY_DOWN:
-            a->press[KEY_LOOK_DOWN] = now;
-            break;
-        case 'w':
-            a->press[KEY_W] = now;
-            break;
-        case 'a':
-            a->press[KEY_A] = now;
-            break;
-        case 's':
-            a->press[KEY_S] = now;
-            break;
-        case 'd':
-            a->press[KEY_D] = now;
             break;
         default:
             break;
@@ -94,29 +59,29 @@ static void app_sim(Engine *e, float dt)
     Vec3 fwd = v3(cp * sinf(a->cam.yaw), sinf(a->cam.pitch),
                   cp * cosf(a->cam.yaw));
     Vec3 right = v3_norm(v3_cross(fwd, v3(0.0f, 1.0f, 0.0f)));
-    Vec3 dirs[4];
-    int i;
 
-    dirs[KEY_W] = fwd;
-    dirs[KEY_A] = v3_mul(right, -1.0f);
-    dirs[KEY_S] = v3_mul(fwd, -1.0f);
-    dirs[KEY_D] = right;
-
-    for (i = 0; i < 4; i++) {
-        if (now - a->press[i] < KEY_WINDOW) {
-            a->cam.pos = v3_add(a->cam.pos, v3_mul(dirs[i], step));
-        }
+    if (input_held(&a->input, 'w', now)) {
+        a->cam.pos = v3_add(a->cam.pos, v3_mul(fwd, step));
     }
-    if (now - a->press[KEY_TURN_LEFT] < KEY_WINDOW) {
+    if (input_held(&a->input, 's', now)) {
+        a->cam.pos = v3_sub(a->cam.pos, v3_mul(fwd, step));
+    }
+    if (input_held(&a->input, 'd', now)) {
+        a->cam.pos = v3_add(a->cam.pos, v3_mul(right, step));
+    }
+    if (input_held(&a->input, 'a', now)) {
+        a->cam.pos = v3_sub(a->cam.pos, v3_mul(right, step));
+    }
+    if (input_held(&a->input, KEY_LEFT, now)) {
         a->cam.yaw += TURN_SPEED * dt;
     }
-    if (now - a->press[KEY_TURN_RIGHT] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_RIGHT, now)) {
         a->cam.yaw -= TURN_SPEED * dt;
     }
-    if (now - a->press[KEY_LOOK_UP] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_UP, now)) {
         a->cam.pitch = clamp_pitch(a->cam.pitch + PITCH_SPEED * dt);
     }
-    if (now - a->press[KEY_LOOK_DOWN] < KEY_WINDOW) {
+    if (input_held(&a->input, KEY_DOWN, now)) {
         a->cam.pitch = clamp_pitch(a->cam.pitch - PITCH_SPEED * dt);
     }
 }
@@ -145,6 +110,7 @@ int main(void)
     Engine *e;
 
     memset(&a, 0, sizeof a);
+    input_clear(&a.input);
     mirror_scene(&a.scene, &a.cam);
     e = engine_open(&hooks, &a);
     if (e == NULL) {

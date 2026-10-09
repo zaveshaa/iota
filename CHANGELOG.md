@@ -6,10 +6,22 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- The terminal reports keys coming up where it can (the keyboard protocol),
+  and a key held in a scene is a key down until it does.
+
 ### Changed
 
 - The frame is drawn between two simulation steps, so a body moves smoothly
   whatever the frame rate the terminal holds.
+
+### Fixed
+
+- A held direction keeps walking across the terminal's own repeat delay,
+  instead of stopping and starting inside it.
+- `d` walks to the right and `a` to the left, as the view has them.
+- The walking range has the mirror it was missing.
 
 ## [0.1.0] - 2026-10-09
 
