@@ -19,6 +19,10 @@
 // so the catch wants a little room past that
 #define EDGE 0.01f
 
+// how long after the ground leaves the body the jump is still allowed, so a
+// step off a ledge does not punish the jump that followed it
+#define COYOTE 0.12f
+
 static void apply_friction(Vec3 *vel, float dt, float rate, int stop)
 {
     float speed = sqrtf(vel->x * vel->x + vel->z * vel->z);
@@ -222,9 +226,15 @@ static void walk_substep(const Scene *s, const Meshes *ms, Walk *w, Vec3 wish,
     } else {
         accelerate(&w->vel, dir, ws, AIR_ACCEL, dt);
     }
-    if (w->jump && w->on_ground) {
+    if (w->on_ground) {
+        w->coyote = COYOTE;
+    } else if (w->coyote > 0.0f) {
+        w->coyote -= dt;
+    }
+    if (w->jump && (w->on_ground || w->coyote > 0.0f)) {
         w->vel.y = JUMP_VEL;
         w->on_ground = 0;
+        w->coyote = 0.0f;
         w->jump = 0;
     }
     w->vel.y -= GRAVITY * dt;

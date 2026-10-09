@@ -188,6 +188,35 @@ static void jump_onto(void)
           "a body jumps onto a ledge it cannot walk up");
 }
 
+static void coyote_jump(void)
+{
+    Scene t;
+    Walk w;
+
+    floor_scene(&t);
+
+    /* leaving the ground keeps the jump a moment longer */
+    w = make_walk(v3(0.0f, 0.0f, 0.0f));
+    run(&w, &t, NULL, v3(0.0f, 0.0f, 0.0f), 1.0f / 60.0f);
+    w.on_ground = 0;
+    w.coyote = 0.12f;
+    w.pos.y = 5.0f;
+    w.jump = 1;
+    run(&w, &t, NULL, v3(0.0f, 0.0f, 0.0f), 1.0f / 60.0f);
+    check(w.vel.y > 4.0f,
+          "a body jumps in the moment after its ground fails");
+
+    /* a moment later the jump is spent */
+    w = make_walk(v3(0.0f, 0.0f, 0.0f));
+    run(&w, &t, NULL, v3(0.0f, 0.0f, 0.0f), 1.0f / 60.0f);
+    w.on_ground = 0;
+    w.coyote = 0.0f;
+    w.pos.y = 5.0f;
+    w.jump = 1;
+    run(&w, &t, NULL, v3(0.0f, 0.0f, 0.0f), 1.0f / 60.0f);
+    check(w.vel.y < 1e-3f, "a jump long after the ledge gives way fails");
+}
+
 int main(void)
 {
     Scene s;
@@ -197,6 +226,7 @@ int main(void)
     steps_and_walls(&s);
     mesh_wall();
     jump_onto();
+    coyote_jump();
     (void)printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures != 0;
 }

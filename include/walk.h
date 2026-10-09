@@ -10,6 +10,7 @@ typedef struct {
     float radius;
     float height;
     float step;
+    float coyote;
     int on_ground;
     int jump;
 } Walk;
