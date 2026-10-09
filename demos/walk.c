@@ -68,7 +68,7 @@ static void build_range(Scene *s, int gem)
         Obj *o = scene_add_obj(s);
 
         o->kind = OBJ_MESH;
-        o->pos = v3(2.4f, 2.6f, 2.0f);
+        o->pos = v3(2.4f, 3.5f, 2.0f);
         o->ink = RGB(220, 130, 230);
         o->mesh = gem;
     } else {

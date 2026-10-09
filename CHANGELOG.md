@@ -26,6 +26,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   instead of stopping and starting inside it.
 - `d` walks to the right and `a` to the left, as the view has them.
 - The walking range has the mirror it was missing.
+- The walk demo's gem floats clear of a high jump, instead of swallowing the
+  eye when it climbs.
 
 ## [0.1.0] - 2026-10-09
 
