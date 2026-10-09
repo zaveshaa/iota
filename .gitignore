@@ -3,6 +3,7 @@
 /golden
 /walk
 /walktest
+/meshtest
 *.o
 
 # macOS

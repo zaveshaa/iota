@@ -10,6 +10,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The terminal reports keys coming up where it can (the keyboard protocol),
   and a key held in a scene is a key down until it does.
+- Meshes: an OBJ loader, a bounding volume hierarchy over the triangles, and a
+  Moller-Trumbore ray test.
 
 ### Changed
 

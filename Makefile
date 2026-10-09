@@ -19,6 +19,8 @@ WALK      ?= walk
 WALK_SRC   = $(CORE) demos/walk.c
 WALK_TEST ?= walktest
 WALK_TEST_SRC = $(CORE) tests/walktest.c
+MESH_TEST ?= meshtest
+MESH_TEST_SRC = src/mesh.c tests/meshtest.c
 HDR       = $(wildcard include/*.h)
 GOLDEN    = tests/golden/mirror.txt
 
@@ -36,9 +38,13 @@ $(TEST_BIN): $(TEST_SRC) $(HDR)
 $(WALK_TEST): $(WALK_TEST_SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(WALK_TEST_SRC) $(LDFLAGS)
 
-test: $(TEST_BIN) $(WALK_TEST)
+$(MESH_TEST): $(MESH_TEST_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(MESH_TEST_SRC) $(LDFLAGS)
+
+test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST)
 	./$(TEST_BIN) $(GOLDEN)
 	./$(WALK_TEST)
+	./$(MESH_TEST)
 
 regen: $(TEST_BIN)
 	./$(TEST_BIN) --write $(GOLDEN)
@@ -62,6 +68,6 @@ help:
 	@echo "  make clean      remove the build"
 
 clean:
-	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST)
+	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST) $(MESH_TEST)
 
 .PHONY: all test regen run install help clean
