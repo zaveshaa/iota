@@ -27,13 +27,17 @@ and what to do next: shade it, bounce it off a mirror, or let it go into the
 fog. The terminal, the cell grid, the ray caster, the frame loop and the
 fixed step are the engine's; the scene is the client's.
 
-This repository carries the first scene: a mirror on a wall. More scenes —
-portals, stairs, shadows, water — follow the same shape.
+This repository carries two scenes: a mirror on a wall, and a test range with
+stairs and crates to walk around in. The engine's body is a walking model in
+the Quake line — ground friction, air control, a jump and a step it takes
+without being asked. More scenes — portals, shadows, water — follow the same
+shape.
 
 ## Build
 
-    make            build iota
-    make install    install into $(PREFIX)/bin, /usr/local by default
+    make            build iota and walk
+    make walk       build the walking test range
+    make install    install iota into $(PREFIX)/bin, /usr/local by default
     make clean      remove the build
 
 The build is warning-clean under `-Wall -Wextra -Wpedantic -Wshadow
@@ -49,12 +53,16 @@ of budget it drops back to one. The window is any size the terminal gives
 it, and the status line shows the millisecond cost, the ray count, the
 recursion depth and whether the budget was hit.
 
+`./walk` opens a test range. The body walks, climbs the stairs it can step
+onto, is stopped by the wall it cannot, and jumps.
+
 ## Controls
 
 | Key | Action |
 | --- | --- |
 | `W` `A` `S` `D` | move |
 | arrow keys | look |
+| `space` | jump, in `walk` |
 | `Esc` | quit |
 
 ## The renderer

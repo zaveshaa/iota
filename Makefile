@@ -11,23 +11,34 @@ endif
 
 BIN      ?= iota
 CORE      = src/term.c src/render.c src/world.c src/cast.c src/view.c \
-            src/engine.c src/scene.c
+            src/engine.c src/scene.c src/walk.c
 SRC       = $(CORE) demos/mirror.c
 TEST_BIN  ?= golden
 TEST_SRC   = $(CORE) tests/golden.c
+WALK      ?= walk
+WALK_SRC   = $(CORE) demos/walk.c
+WALK_TEST ?= walktest
+WALK_TEST_SRC = $(CORE) tests/walktest.c
 HDR       = $(wildcard include/*.h)
 GOLDEN    = tests/golden/mirror.txt
 
-all: $(BIN)
+all: $(BIN) $(WALK)
 
 $(BIN): $(SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(SRC) $(LDFLAGS)
 
+$(WALK): $(WALK_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(WALK_SRC) $(LDFLAGS)
+
 $(TEST_BIN): $(TEST_SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(TEST_SRC) $(LDFLAGS)
 
-test: $(TEST_BIN)
+$(WALK_TEST): $(WALK_TEST_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(WALK_TEST_SRC) $(LDFLAGS)
+
+test: $(TEST_BIN) $(WALK_TEST)
 	./$(TEST_BIN) $(GOLDEN)
+	./$(WALK_TEST)
 
 regen: $(TEST_BIN)
 	./$(TEST_BIN) --write $(GOLDEN)
@@ -46,10 +57,11 @@ help:
 	@echo "  make test       run the checks and compare the frame"
 	@echo "  make regen      rewrite the golden frame"
 	@echo "  make run        watch a mirror on the wall"
+	@echo "  make walk       walk a test range"
 	@echo "  make install    install into $(DESTDIR)$(PREFIX)/bin"
 	@echo "  make clean      remove the build"
 
 clean:
-	rm -f $(BIN) $(TEST_BIN)
+	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST)
 
 .PHONY: all test regen run install help clean
