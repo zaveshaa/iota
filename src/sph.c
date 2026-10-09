@@ -247,6 +247,8 @@ static void sph_integrate(Sph *sp)
 
 void sph_init(Sph *sp, Vec3 lo, Vec3 hi)
 {
+    int c;
+
     memset(sp, 0, sizeof *sp);
     sp->lo_x = lo.x;
     sp->lo_y = lo.y;
@@ -260,6 +262,9 @@ void sph_init(Sph *sp, Vec3 lo, Vec3 hi)
     sp->kpoly = kpoly6();
     sp->kspiky = kspiky();
     sp->kvisc = kvisc();
+    for (c = 0; c < sp->gx * sp->gy * sp->gz; c++) {
+        sp->head[c] = -1;
+    }
 }
 
 void sph_fill(Sph *sp, Vec3 lo, Vec3 hi, float spacing)
