@@ -361,7 +361,53 @@ int sph_body(Sph *sp, Vec3 feet, float radius, float height, Vec3 vel)
     return n;
 }
 
-static int ray_aabb(Vec3 o, Vec3 d, const Sph *sp, float tmax, float *t_out)
+static float sph_dens_at(const Sph *sp, Vec3 p)
+{
+    float sum = sp->kpoly * H2 * H2 * H2;
+    int cx = clamp_cell(p.x, sp->lo_x, sp->gx);
+    int cy = clamp_cell(p.y, sp->lo_y, sp->gy);
+    int cz = clamp_cell(p.z, sp->lo_z, sp->gz);
+    int dy;
+    int dz;
+    int dx;
+
+    for (dy = -1; dy <= 1; dy++) {
+        for (dz = -1; dz <= 1; dz++) {
+            for (dx = -1; dx <= 1; dx++) {
+                int cyy = cy + dy;
+                int czz = cz + dz;
+                int cxx = cx + dx;
+                int j;
+
+                if (cyy < 0 || cyy >= sp->gy) {
+                    continue;
+                }
+                if (czz < 0 || czz >= sp->gz) {
+                    continue;
+                }
+                if (cxx < 0 || cxx >= sp->gx) {
+                    continue;
+                }
+                j = sp->head[(cyy * sp->gz + czz) * sp->gx + cxx];
+                while (j >= 0) {
+                    Vec3 r = v3_sub(p, sp->pt[j].pos);
+                    float d2 = v3_dot(r, r);
+
+                    if (d2 < H2) {
+                        float q = H2 - d2;
+
+                        sum += sp->kpoly * q * q * q;
+                    }
+                    j = sp->next[j];
+                }
+            }
+        }
+    }
+    return sum;
+}
+
+static int ray_aabb(Vec3 o, Vec3 d, const Sph *sp, float tmax, float *t_out,
+                    float *t_exit)
 {
     float tmin = -FLT_MAX;
     float tmaxe = FLT_MAX;
@@ -406,131 +452,37 @@ static int ray_aabb(Vec3 o, Vec3 d, const Sph *sp, float tmax, float *t_out)
         return 0;
     }
     *t_out = tmin;
+    if (tmaxe > tmax) {
+        tmaxe = tmax;
+    }
+    *t_exit = tmaxe;
     return 1;
 }
 
 int sph_cast(const Sph *sp, Vec3 origin, Vec3 dir, float tmax, float *t_out,
-             Vec3 *n_out)
+             Vec3 *n_out, float *d_out)
 {
-    Vec3 start;
+    const float step = SPH_SMOOTH * 0.5f;
     float tenter;
-    float tbound = 0.0f;
-    int cx;
-    int cy;
-    int cz;
-    int sx;
-    int sy;
-    int sz;
-    float tmax_x;
-    float tmax_y;
-    float tmax_z;
-    float tdx;
-    float tdy;
-    float tdz;
-    int best = -1;
-    float best_t = tmax;
-    int axis;
+    float texit;
+    float t;
 
     if (sp->count == 0) {
         return -1;
     }
-    if (!ray_aabb(origin, dir, sp, tmax, &tenter)) {
+    if (!ray_aabb(origin, dir, sp, tmax, &tenter, &texit)) {
         return -1;
     }
-    start = v3_add(origin, v3_mul(dir, tenter));
-    cx = clamp_cell(start.x, sp->lo_x, sp->gx);
-    cy = clamp_cell(start.y, sp->lo_y, sp->gy);
-    cz = clamp_cell(start.z, sp->lo_z, sp->gz);
-    sx = dir.x > 0.0f ? 1 : -1;
-    sy = dir.y > 0.0f ? 1 : -1;
-    sz = dir.z > 0.0f ? 1 : -1;
+    for (t = tenter; t < texit; t += step) {
+        Vec3 p = v3_add(origin, v3_mul(dir, t));
+        float d = sph_dens_at(sp, p);
 
-    if (dir.x > -1e-9f && dir.x < 1e-9f) {
-        tmax_x = FLT_MAX;
-        tdx = FLT_MAX;
-    } else {
-        tdx = SPH_SMOOTH / fabsf(dir.x);
-        tmax_x = (sx > 0 ? (sp->lo_x + (float)(cx + 1) * SPH_SMOOTH) - start.x
-                         : (sp->lo_x + (float)cx * SPH_SMOOTH) - start.x) /
-                 dir.x;
-    }
-    if (dir.y > -1e-9f && dir.y < 1e-9f) {
-        tmax_y = FLT_MAX;
-        tdy = FLT_MAX;
-    } else {
-        tdy = SPH_SMOOTH / fabsf(dir.y);
-        tmax_y = (sy > 0 ? (sp->lo_y + (float)(cy + 1) * SPH_SMOOTH) - start.y
-                         : (sp->lo_y + (float)cy * SPH_SMOOTH) - start.y) /
-                 dir.y;
-    }
-    if (dir.z > -1e-9f && dir.z < 1e-9f) {
-        tmax_z = FLT_MAX;
-        tdz = FLT_MAX;
-    } else {
-        tdz = SPH_SMOOTH / fabsf(dir.z);
-        tmax_z = (sz > 0 ? (sp->lo_z + (float)(cz + 1) * SPH_SMOOTH) - start.z
-                         : (sp->lo_z + (float)cz * SPH_SMOOTH) - start.z) /
-                 dir.z;
-    }
-
-    for (;;) {
-        int cell = (cy * sp->gz + cz) * sp->gx + cx;
-        int j = sp->head[cell];
-
-        tbound = tmax_x;
-        axis = 0;
-        if (tmax_y < tbound) {
-            tbound = tmax_y;
-            axis = 1;
-        }
-        if (tmax_z < tbound) {
-            tbound = tmax_z;
-            axis = 2;
-        }
-        while (j >= 0) {
-            Vec3 rel = v3_sub(sp->pt[j].pos, origin);
-            float b = v3_dot(rel, dir);
-            float c = v3_dot(rel, rel) - SPH_PT_R * SPH_PT_R;
-            float disc = b * b - c;
-
-            if (disc > 0.0f) {
-                float t = -b - sqrtf(disc);
-
-                if (t < 0.0f) {
-                    t = -b + sqrtf(disc);
-                }
-                if (t >= 0.0f && t < best_t) {
-                    best = j;
-                    best_t = t;
-                    *t_out = t;
-                    *n_out = v3_mul(
-                        v3_sub(v3_add(origin, v3_mul(dir, t)),
-                               sp->pt[j].pos),
-                        1.0f / SPH_PT_R);
-                }
-            }
-            j = sp->next[j];
-        }
-        if (best >= 0 && best_t < tbound) {
-            break;
-        }
-        if (tbound >= tmax) {
-            break;
-        }
-        if (axis == 0) {
-            cx += sx;
-            tmax_x += tdx;
-        } else if (axis == 1) {
-            cy += sy;
-            tmax_y += tdy;
-        } else {
-            cz += sz;
-            tmax_z += tdz;
-        }
-        if (cx < 0 || cx >= sp->gx || cy < 0 || cy >= sp->gy || cz < 0 ||
-            cz >= sp->gz) {
-            break;
+        if (d >= SPH_REST * 0.45f) {
+            *t_out = t;
+            *n_out = v3(0.0f, 1.0f, 0.0f);
+            *d_out = d;
+            return 1;
         }
     }
-    return best;
+    return -1;
 }

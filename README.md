@@ -88,8 +88,9 @@ files through a scene the way a box does.
 Water is a cloud of particles in a smoothed-particle pool: each one sums its
 neighbours' density, feels the pressure and drag that density gives, falls
 under gravity and bounces off the trough. The body shoves the drops aside,
-its motion casts them up in a splash, and the view draws a ray against the
-nearest drop it crosses.
+its motion casts them up in a splash, and the view walks a ray through the
+pool, shading the first place the density turns to water: the surface shows
+the ripples and the splash throws up a spray.
 
 ## Layout
 

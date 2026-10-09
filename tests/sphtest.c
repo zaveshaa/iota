@@ -155,6 +155,24 @@ static void stays_in_pool(void)
     check(max_y <= sp.hi_y + 1e-3f, "a splash never leaves the pool");
 }
 
+static void cast_finds_surface(void)
+{
+    Sph sp = make_pool();
+    Vec3 n;
+    float t;
+    float d;
+    int above;
+
+    step(&sp, 1.2f);
+    above = sph_cast(&sp, v3(0.0f, 1.2f, 1.9f), v3(0.0f, -1.0f, 0.0f), 4.0f,
+                     &t, &n, &d);
+    check(above >= 0 && t > 0.6f && t < 1.3f,
+          "a cast into a settled pool finds its surface");
+    above = sph_cast(&sp, v3(4.0f, 1.0f, 1.9f), v3(0.0f, -1.0f, 0.0f), 4.0f,
+                     &t, &n, &d);
+    check(above < 0, "a cast beside the pool finds no water");
+}
+
 int main(void)
 {
     Sph sp = make_pool();
@@ -165,6 +183,7 @@ int main(void)
     body_splash();
     deterministic();
     stays_in_pool();
+    cast_finds_surface();
     (void)printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures != 0;
 }

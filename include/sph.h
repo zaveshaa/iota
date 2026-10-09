@@ -43,6 +43,6 @@ void sph_fill(Sph *sp, Vec3 lo, Vec3 hi, float spacing);
 void sph_step(Sph *sp, float dt);
 int sph_body(Sph *sp, Vec3 feet, float radius, float height, Vec3 vel);
 int sph_cast(const Sph *sp, Vec3 origin, Vec3 dir, float tmax, float *t_out,
-             Vec3 *n_out);
+             Vec3 *n_out, float *d_out);
 
 #endif

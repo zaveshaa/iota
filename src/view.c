@@ -100,16 +100,15 @@ static Vec3 shade(const Scene *s, const Hit *h)
     return acc;
 }
 
-static Vec3 water_color(const Sph *sp, int idx, Vec3 normal, Vec3 dir)
+static Vec3 water_color(float dens, Vec3 dir)
 {
-    float d = sp->pt[idx].dens;
     float bright =
-        clamp01((d - SPH_REST * 0.6f) / (SPH_REST * 1.4f));
-    float ndv = clamp01(fabsf(v3_dot(normal, dir)));
-    Vec3 col = v3_mul(rgb_vec(RGB(48, 116, 224)), 0.30f + 0.95f * bright);
+        clamp01((dens - SPH_REST * 0.6f) / (SPH_REST * 1.4f));
+    float ndv = clamp01(fabsf(dir.y));
+    Vec3 col = v3_mul(rgb_vec(RGB(40, 120, 235)), 0.55f + 0.9f * bright);
 
     col = v3_add(col, v3_mul(rgb_vec(RGB(150, 196, 255)),
-                             0.25f * (1.0f - ndv)));
+                              (0.35f + 0.5f * bright) * (1.0f - ndv)));
     return col;
 }
 
@@ -119,6 +118,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     Vec3 col;
     int wp;
     float wt;
+    float wd;
     Vec3 wn;
 
     cx->st->rays++;
@@ -137,10 +137,9 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     }
     h = cast_ray(cx->s, cx->ms, origin, dir, 1e9f);
     if (cx->sp != NULL) {
-        wp = sph_cast(cx->sp, origin, dir, h.t, &wt, &wn);
+        wp = sph_cast(cx->sp, origin, dir, h.t, &wt, &wn, &wd);
         if (wp >= 0) {
-            return mix(water_color(cx->sp, wp, wn, dir), cx->fog,
-                       fog_factor(cx->s, wt));
+            return mix(water_color(wd, dir), cx->fog, fog_factor(cx->s, wt));
         }
     }
     if (h.action == HIT_NONE) {
