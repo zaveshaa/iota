@@ -1,0 +1,27 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: build with warnings fatal
+        run: make WERROR=1 all
+
+      - name: run the checks
+        run: make WERROR=1 test
+
+      - name: publish the tag
+        uses: softprops/action-gh-release@v2
+        with:
+          files: iota
+          generate_release_notes: true
