@@ -1,6 +1,7 @@
 #include "walk.h"
 
 #include <math.h>
+#include <stddef.h>
 
 #define MAX_STEP (1.0f / 240.0f)
 
@@ -51,8 +52,49 @@ static void accelerate(Vec3 *vel, Vec3 dir, float wishspeed, float accel,
     vel->z += dir.z * gained;
 }
 
-static Vec3 depenetrate(const Scene *s, Vec3 p, float radius, float height,
-                        float step)
+static void push_box(Vec3 *p, Vec3 center, Vec3 half, float radius,
+                     float height, float step)
+{
+    float dx;
+    float dz;
+
+    if (center.y + half.y <= p->y + step) {
+        return;
+    }
+    if (center.y - half.y >= p->y + height) {
+        return;
+    }
+    dx = half.x + radius - fabsf(p->x - center.x);
+    dz = half.z + radius - fabsf(p->z - center.z);
+    if (dx <= 0.0f || dz <= 0.0f) {
+        return;
+    }
+    if (dx < dz) {
+        p->x += p->x < center.x ? -dx : dx;
+    } else {
+        p->z += p->z < center.z ? -dz : dz;
+    }
+}
+
+// the box a mesh stands in, or 0 when the mesh is out of reach; the mesh is
+// solid in the axis-aligned box around it, which its faces nearly fill
+static int mesh_box(const Obj *o, const Meshes *ms, Vec3 *center, Vec3 *half)
+{
+    const Mesh *m;
+    Vec3 mid;
+
+    if (ms == NULL || o->mesh < 0 || o->mesh >= ms->count) {
+        return 0;
+    }
+    m = &ms->items[o->mesh];
+    mid = v3_mul(v3_add(m->lo, m->hi), 0.5f);
+    *center = v3_add(o->pos, mid);
+    *half = v3_mul(v3_sub(m->hi, m->lo), 0.5f);
+    return 1;
+}
+
+static Vec3 depenetrate(const Scene *s, const Meshes *ms, Vec3 p, float radius,
+                        float height, float step)
 {
     Vec3 start = p;
     int i;
@@ -84,31 +126,20 @@ static Vec3 depenetrate(const Scene *s, Vec3 p, float radius, float height,
             p.x += ex * k;
             p.z += ez * k;
         } else if (o->kind == OBJ_BOX) {
-            float dx;
-            float dz;
+            push_box(&p, o->pos, o->half, radius, height, step);
+        } else if (o->kind == OBJ_MESH) {
+            Vec3 center;
+            Vec3 half;
 
-            if (o->pos.y + o->half.y <= p.y + step) {
-                continue;
-            }
-            if (o->pos.y - o->half.y >= p.y + height) {
-                continue;
-            }
-            dx = o->half.x + radius - fabsf(p.x - o->pos.x);
-            dz = o->half.z + radius - fabsf(p.z - o->pos.z);
-            if (dx <= 0.0f || dz <= 0.0f) {
-                continue;
-            }
-            if (dx < dz) {
-                p.x += p.x < o->pos.x ? -dx : dx;
-            } else {
-                p.z += p.z < o->pos.z ? -dz : dz;
+            if (mesh_box(o, ms, &center, &half)) {
+                push_box(&p, center, half, radius, height, step);
             }
         }
     }
     return v3_sub(p, start);
 }
 
-static float ground_scan(const Scene *s, Vec3 p, float below)
+static float ground_scan(const Scene *s, const Meshes *ms, Vec3 p, float below)
 {
     float g = -1e30f;
     int i;
@@ -135,6 +166,20 @@ static float ground_scan(const Scene *s, Vec3 p, float below)
                 continue;
             }
             top = o->pos.y + o->half.y;
+        } else if (o->kind == OBJ_MESH) {
+            Vec3 center;
+            Vec3 half;
+
+            if (!mesh_box(o, ms, &center, &half)) {
+                continue;
+            }
+            if (fabsf(p.x - center.x) > half.x) {
+                continue;
+            }
+            if (fabsf(p.z - center.z) > half.z) {
+                continue;
+            }
+            top = center.y + half.y;
         } else if (o->axis.y > 0.5f) {
             top = o->pos.y;
         } else {
@@ -147,8 +192,8 @@ static float ground_scan(const Scene *s, Vec3 p, float below)
     return g;
 }
 
-static void walk_substep(const Scene *s, Walk *w, Vec3 wish, float speed,
-                         float dt)
+static void walk_substep(const Scene *s, const Meshes *ms, Walk *w, Vec3 wish,
+                         float speed, float dt)
 {
     float len = sqrtf(wish.x * wish.x + wish.z * wish.z);
     Vec3 dir = v3(0.0f, 0.0f, 0.0f);
@@ -181,11 +226,11 @@ static void walk_substep(const Scene *s, Walk *w, Vec3 wish, float speed,
     p = w->pos;
     p.x += w->vel.x * dt;
     p.z += w->vel.z * dt;
-    p = v3_add(p, depenetrate(s, p, w->radius, w->height, w->step));
+    p = v3_add(p, depenetrate(s, ms, p, w->radius, w->height, w->step));
 
     p.y += w->vel.y * dt;
     {
-        float ground = ground_scan(s, p, p.y + w->step);
+        float ground = ground_scan(s, ms, p, p.y + w->step);
 
         if (p.y <= ground) {
             p.y = ground;
@@ -197,18 +242,19 @@ static void walk_substep(const Scene *s, Walk *w, Vec3 wish, float speed,
             w->on_ground = 0;
         }
     }
-    p = v3_add(p, depenetrate(s, p, w->radius, w->height, w->step));
+    p = v3_add(p, depenetrate(s, ms, p, w->radius, w->height, w->step));
     w->pos = p;
 }
 
-void walk_move(const Scene *s, Walk *w, Vec3 wish, float speed, float dt)
+void walk_move(const Scene *s, const Meshes *ms, Walk *w, Vec3 wish,
+               float speed, float dt)
 {
     float left = dt;
 
     while (left > 0.0f) {
         float h = left > MAX_STEP ? MAX_STEP : left;
 
-        walk_substep(s, w, wish, speed, h);
+        walk_substep(s, ms, w, wish, speed, h);
         left -= h;
     }
 }

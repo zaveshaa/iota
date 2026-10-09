@@ -19,6 +19,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The frame is drawn between two simulation steps, so a body moves smoothly
   whatever the frame rate the terminal holds.
+- A mesh is solid where it stands: a body walks into the box around it and
+  stands on the box's top.
 
 ### Fixed
 

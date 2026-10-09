@@ -163,7 +163,7 @@ static void app_sim(Engine *e, float dt)
         a->cam.pitch = -PITCH_MAX;
     }
 
-    walk_move(&a->scene, &a->player, wish, SPEED, dt);
+    walk_move(&a->scene, &a->meshes, &a->player, wish, SPEED, dt);
     a->cam.pos = v3(a->player.pos.x, a->player.pos.y + EYE, a->player.pos.z);
 }
 

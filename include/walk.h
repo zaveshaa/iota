@@ -14,6 +14,7 @@ typedef struct {
     int jump;
 } Walk;
 
-void walk_move(const Scene *s, Walk *w, Vec3 wish, float speed, float dt);
+void walk_move(const Scene *s, const Meshes *ms, Walk *w, Vec3 wish,
+               float speed, float dt);
 
 #endif
