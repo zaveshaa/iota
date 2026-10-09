@@ -36,10 +36,14 @@ typedef struct {
     float kpoly;
     float kspiky;
     float kvisc;
+    float wall_h;
+    float lip_z;
 } Sph;
 
 void sph_init(Sph *sp, Vec3 lo, Vec3 hi);
 void sph_fill(Sph *sp, Vec3 lo, Vec3 hi, float spacing);
+void sph_walls(Sph *sp, float height, float lip);
+int sph_emit(Sph *sp, Vec3 at, Vec3 vel, float spread);
 void sph_step(Sph *sp, float dt);
 int sph_body(Sph *sp, Vec3 feet, float radius, float height, Vec3 vel);
 int sph_cast(const Sph *sp, Vec3 origin, Vec3 dir, float tmax, float *t_out,

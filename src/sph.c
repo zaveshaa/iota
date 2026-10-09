@@ -229,19 +229,46 @@ static void sph_integrate(Sph *sp)
                 v.y = -v.y * 0.35f;
             }
         }
-        if (p.z < sp->lo_z) {
+        if (p.z > sp->hi_z) {
+            p.z = sp->hi_z;
+            if (v.z > 0.0f) {
+                v.z = -v.z * 0.35f;
+            }
+        } else if (p.z < sp->lo_z) {
             p.z = sp->lo_z;
             if (v.z < 0.0f) {
                 v.z = -v.z * 0.35f;
             }
-        } else if (p.z > sp->hi_z) {
-            p.z = sp->hi_z;
-            if (v.z > 0.0f) {
+        }
+        if (sp->wall_h > 0.0f && p.y < sp->lo_y + sp->wall_h) {
+            float pz = sp->pt[i].pos.z;
+
+            if ((pz >= sp->lip_z && p.z <= sp->lip_z) ||
+                (pz <= sp->lip_z && p.z >= sp->lip_z)) {
+                p.z = sp->lip_z;
                 v.z = -v.z * 0.35f;
             }
         }
         sp->pt[i].pos = p;
         sp->pt[i].vel = v;
+    }
+}
+
+static void sph_drain(Sph *sp)
+{
+    int i = 0;
+
+    if (sp->wall_h <= 0.0f) {
+        return;
+    }
+    while (i < sp->count) {
+        if (sp->pt[i].pos.z < sp->lip_z &&
+            sp->pt[i].pos.y < sp->lo_y + 0.08f) {
+            sp->count--;
+            sp->pt[i] = sp->pt[sp->count];
+            continue;
+        }
+        i++;
     }
 }
 
@@ -298,6 +325,37 @@ void sph_fill(Sph *sp, Vec3 lo, Vec3 hi, float spacing)
     }
 }
 
+void sph_walls(Sph *sp, float height, float lip)
+{
+    sp->wall_h = height;
+    sp->lip_z = lip;
+}
+
+int sph_emit(Sph *sp, Vec3 at, Vec3 vel, float spread)
+{
+    unsigned h;
+    float a;
+    float r;
+    Vec3 d;
+    SphPt *s;
+
+    if (sp->count >= SPH_MAX) {
+        return 0;
+    }
+    h = hash32((unsigned)sp->count * 2654435761u + 13u);
+    a = (float)(h & 0xffffu) / 65535.0f * 2.0f * (float)M_PI;
+    r = (float)((h >> 16) & 0xffffu) / 65535.0f;
+    d = v3(cosf(a) * r * spread,
+           ((float)((h >> 8) & 255u) / 255.0f - 0.5f) * spread * 0.5f,
+           sinf(a) * r * spread);
+    s = &sp->pt[sp->count];
+    s->pos = v3_add(at, d);
+    s->vel = vel;
+    s->dens = SPH_REST;
+    sp->count++;
+    return 1;
+}
+
 void sph_step(Sph *sp, float dt)
 {
     float left = dt;
@@ -309,6 +367,7 @@ void sph_step(Sph *sp, float dt)
         sph_densities(sp);
         sph_forces(sp);
         sph_integrate(sp);
+        sph_drain(sp);
         left -= h;
     }
     grid_build(sp);

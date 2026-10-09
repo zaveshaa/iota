@@ -27,6 +27,7 @@ typedef struct {
     Vec3 prev_pos;
     float prev_yaw;
     float prev_pitch;
+    float source_acc;
 } App;
 
 static float lerpf(float a, float b, float t)
@@ -68,15 +69,22 @@ static void build_range(Scene *s, int gem)
             RGB(70, 180, 220));
 
     /* the trough that holds the pool of water, its inner faces flush with
-       the water's own bounds */
-    add_box(s, v3(-1.55f, 0.19f, 2.0f), v3(0.05f, 0.19f, 1.11f),
+       the water's own bounds; the front lip sits low so the pool spills
+       over it while the taller sides and back hold the waves */
+    add_box(s, v3(-1.55f, 0.275f, 2.0f), v3(0.05f, 0.275f, 1.11f),
             RGB(94, 100, 116));
-    add_box(s, v3(1.55f, 0.19f, 2.0f), v3(0.05f, 0.19f, 1.11f),
+    add_box(s, v3(1.55f, 0.275f, 2.0f), v3(0.05f, 0.275f, 1.11f),
             RGB(94, 100, 116));
-    add_box(s, v3(0.0f, 0.19f, 0.85f), v3(1.55f, 0.19f, 0.05f),
+    add_box(s, v3(0.0f, 0.14f, 0.85f), v3(1.55f, 0.14f, 0.05f),
             RGB(94, 100, 116));
-    add_box(s, v3(0.0f, 0.19f, 3.15f), v3(1.55f, 0.19f, 0.05f),
+    add_box(s, v3(0.0f, 0.275f, 3.15f), v3(1.55f, 0.275f, 0.05f),
             RGB(94, 100, 116));
+
+    /* a spout stands beside the trough and pours a stream over the water */
+    add_box(s, v3(1.75f, 0.4f, 2.0f), v3(0.09f, 0.4f, 0.09f),
+            RGB(150, 160, 180));
+    add_box(s, v3(1.3f, 0.7f, 2.0f), v3(0.45f, 0.06f, 0.06f),
+            RGB(150, 160, 180));
 
     if (gem >= 0) {
         Obj *o = scene_add_obj(s);
@@ -191,6 +199,16 @@ static void app_sim(Engine *e, float dt)
         k = 1.0f - 0.8f * w * dt;
         a->player.vel.x *= k;
         a->player.vel.z *= k;
+        {
+            Vec3 at = v3(0.9f, 0.64f, 2.0f);
+            Vec3 flow = v3(0.0f, -0.5f, 0.0f);
+
+            a->source_acc += 100.0f * dt;
+            while (a->source_acc >= 1.0f) {
+                (void)sph_emit(&a->water, at, flow, 0.07f);
+                a->source_acc -= 1.0f;
+            }
+        }
         sph_step(&a->water, dt);
     }
     a->cam.pos = v3(a->player.pos.x, a->player.pos.y + EYE, a->player.pos.z);
@@ -229,8 +247,9 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
-    sph_init(&a.water, v3(-1.5f, 0.0f, 0.9f), v3(1.5f, 1.3f, 3.1f));
-    sph_fill(&a.water, v3(-1.5f, 0.0f, 0.9f), v3(1.5f, 0.56f, 3.1f), 0.18f);
+    sph_init(&a.water, v3(-1.5f, 0.0f, 0.0f), v3(1.5f, 1.3f, 3.1f));
+    sph_walls(&a.water, 0.28f, 0.9f);
+    sph_fill(&a.water, v3(-1.5f, 0.0f, 0.9f), v3(1.5f, 0.36f, 3.1f), 0.18f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
