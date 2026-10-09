@@ -1,9 +1,11 @@
 #include "engine.h"
 #include "input.h"
+#include "sph.h"
 #include "view.h"
 #include "walk.h"
 #include "world.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -16,6 +18,7 @@
 typedef struct {
     Scene scene;
     Meshes meshes;
+    Sph water;
     Camera cam;
     Walk player;
     ViewStats stats;
@@ -63,6 +66,17 @@ static void build_range(Scene *s, int gem)
             RGB(224, 144, 64));
     add_box(s, v3(2.4f, 0.75f, 2.0f), v3(0.5f, 0.75f, 0.5f),
             RGB(70, 180, 220));
+
+    /* the trough that holds the pool of water, its inner faces flush with
+       the water's own bounds */
+    add_box(s, v3(-1.55f, 0.19f, 2.0f), v3(0.05f, 0.19f, 1.11f),
+            RGB(94, 100, 116));
+    add_box(s, v3(1.55f, 0.19f, 2.0f), v3(0.05f, 0.19f, 1.11f),
+            RGB(94, 100, 116));
+    add_box(s, v3(0.0f, 0.19f, 0.85f), v3(1.55f, 0.19f, 0.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(0.0f, 0.19f, 3.15f), v3(1.55f, 0.19f, 0.05f),
+            RGB(94, 100, 116));
 
     if (gem >= 0) {
         Obj *o = scene_add_obj(s);
@@ -164,6 +178,21 @@ static void app_sim(Engine *e, float dt)
     }
 
     walk_move(&a->scene, &a->meshes, &a->player, wish, SPEED, dt);
+    {
+        Vec3 feet = a->player.pos;
+        int wet = sph_body(&a->water, feet, a->player.radius, a->player.height,
+                           a->player.vel);
+        float w = (float)wet / 40.0f;
+        float k;
+
+        if (w > 1.0f) {
+            w = 1.0f;
+        }
+        k = 1.0f - 0.8f * w * dt;
+        a->player.vel.x *= k;
+        a->player.vel.z *= k;
+        sph_step(&a->water, dt);
+    }
     a->cam.pos = v3(a->player.pos.x, a->player.pos.y + EYE, a->player.pos.z);
 }
 
@@ -180,7 +209,7 @@ static void app_draw(Engine *e)
                   lerpf(a->prev_pos.z, a->player.pos.z, alpha));
     view.yaw = lerpf(a->prev_yaw, a->cam.yaw, alpha);
     view.pitch = lerpf(a->prev_pitch, a->cam.pitch, alpha);
-    view_render(&a->scene, &a->meshes, &view, r, engine_ss(e),
+    view_render(&a->scene, &a->meshes, &a->water, &view, r, engine_ss(e),
                 (float)VIEW_BUDGET_MS, &a->stats);
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,
@@ -200,6 +229,8 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
+    sph_init(&a.water, v3(-1.5f, 0.0f, 0.9f), v3(1.5f, 1.3f, 3.1f));
+    sph_fill(&a.water, v3(-1.5f, 0.0f, 0.9f), v3(1.5f, 0.56f, 3.1f), 0.18f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
@@ -216,3 +247,4 @@ int main(void)
     engine_close(e);
     return 0;
 }
+

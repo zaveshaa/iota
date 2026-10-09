@@ -55,7 +55,9 @@ recursion depth and whether the budget was hit.
 
 `./walk` opens a test range. The body walks, climbs the stairs it can step
 onto, is stopped by the wall it cannot, and jumps. The far wall is a mirror,
-so the range reflects back along it.
+so the range reflects back along it. A smoothed-particle pool lies in the
+way of the walk, thrown into splashes as the body steps through it, and the
+body wades slower under the water's drag.
 
 ## Controls
 
@@ -82,6 +84,12 @@ the budget runs out the frame stops at the fog, the status line says
 Triangles are another surface. An OBJ loader reads them into a bounding
 volume hierarchy, and a ray casts against the ones it crosses, so a model
 files through a scene the way a box does.
+
+Water is a cloud of particles in a smoothed-particle pool: each one sums its
+neighbours' density, feels the pressure and drag that density gives, falls
+under gravity and bounces off the trough. The body shoves the drops aside,
+its motion casts them up in a splash, and the view draws a ray against the
+nearest drop it crosses.
 
 ## Layout
 

@@ -8,6 +8,7 @@ static const char g_ramp[] = VIEW_RAMP;
 typedef struct {
     const Scene *s;
     const Meshes *ms;
+    const Sph *sp;
     double deadline;
     int no_deadline;
     int expired;
@@ -99,10 +100,26 @@ static Vec3 shade(const Scene *s, const Hit *h)
     return acc;
 }
 
+static Vec3 water_color(const Sph *sp, int idx, Vec3 normal, Vec3 dir)
+{
+    float d = sp->pt[idx].dens;
+    float bright =
+        clamp01((d - SPH_REST * 0.6f) / (SPH_REST * 1.4f));
+    float ndv = clamp01(fabsf(v3_dot(normal, dir)));
+    Vec3 col = v3_mul(rgb_vec(RGB(48, 116, 224)), 0.30f + 0.95f * bright);
+
+    col = v3_add(col, v3_mul(rgb_vec(RGB(150, 196, 255)),
+                             0.25f * (1.0f - ndv)));
+    return col;
+}
+
 static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
 {
     Hit h;
     Vec3 col;
+    int wp;
+    float wt;
+    Vec3 wn;
 
     cx->st->rays++;
     if (depth > cx->st->depth_max) {
@@ -119,6 +136,13 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         }
     }
     h = cast_ray(cx->s, cx->ms, origin, dir, 1e9f);
+    if (cx->sp != NULL) {
+        wp = sph_cast(cx->sp, origin, dir, h.t, &wt, &wn);
+        if (wp >= 0) {
+            return mix(water_color(cx->sp, wp, wn, dir), cx->fog,
+                       fog_factor(cx->s, wt));
+        }
+    }
     if (h.action == HIT_NONE) {
         return cx->fog;
     }
@@ -136,8 +160,9 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     return col;
 }
 
-void view_render(const Scene *s, const Meshes *ms, const Camera *cam, Render *r,
-                 int ss, float budget_ms, ViewStats *st)
+void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
+                 const Camera *cam, Render *r, int ss, float budget_ms,
+                 ViewStats *st)
 {
     static Vec3 *buf;
     static size_t cap;
@@ -154,7 +179,7 @@ void view_render(const Scene *s, const Meshes *ms, const Camera *cam, Render *r,
     float tan_half;
     float aspect;
     float cp;
-    float sp;
+    float spitch;
     Ctx cx;
     size_t i;
     int x;
@@ -187,8 +212,8 @@ void view_render(const Scene *s, const Meshes *ms, const Camera *cam, Render *r,
     }
 
     cp = cosf(cam->pitch);
-    sp = sinf(cam->pitch);
-    forward = v3(cp * sinf(cam->yaw), sp, cp * cosf(cam->yaw));
+    spitch = sinf(cam->pitch);
+    forward = v3(cp * sinf(cam->yaw), spitch, cp * cosf(cam->yaw));
     right = v3_norm(v3_cross(forward, world_up));
     up = v3_cross(right, forward);
     tan_half = tanf(cam->fov * 0.5f);
@@ -196,6 +221,7 @@ void view_render(const Scene *s, const Meshes *ms, const Camera *cam, Render *r,
 
     cx.s = s;
     cx.ms = ms;
+    cx.sp = sp;
     cx.no_deadline = budget_ms <= 0.0f;
     cx.deadline = cx.no_deadline ? 0.0 : now_ms() + (double)budget_ms;
     cx.expired = 0;

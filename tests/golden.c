@@ -196,7 +196,7 @@ int main(int argc, char **argv)
         (void)fprintf(stderr, "golden: no memory for the frame\n");
         return 1;
     }
-    view_render(&scene, NULL, &cam, r, 1, 0.0f, &st);
+    view_render(&scene, NULL, NULL, &cam, r, 1, 0.0f, &st);
     check(st.depth_max >= 1 && st.depth_max <= VIEW_MAX_DEPTH,
           "mirrors bounce within the depth we promised", NULL);
     check(st.rays > (unsigned)(GOLD_COLS * GOLD_ROWS) &&
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
             (void)fprintf(stderr, "golden: no memory for the frame\n");
             return 1;
         }
-        view_render(&scene, NULL, &cam, again, 1, 0.0f, &st2);
+        view_render(&scene, NULL, NULL, &cam, again, 1, 0.0f, &st2);
         {
             int same = 1;
 
