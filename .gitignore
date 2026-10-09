@@ -1,6 +1,8 @@
 # the programs, built in the place they are built
 /iota
 /golden
+/walk
+/walktest
 *.o
 
 # macOS
