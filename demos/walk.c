@@ -68,15 +68,14 @@ static void build_range(Scene *s, int gem)
     add_box(s, v3(2.4f, 0.75f, 2.0f), v3(0.5f, 0.75f, 0.5f),
             RGB(70, 180, 220));
 
-    /* deep bath in the side, away from the central props, with a stair down */
-    add_box(s, v3(6.2f, 0.3f, -4.5f), v3(1.1f, 0.3f, 1.1f), RGB(94, 100, 116));
-    add_box(s, v3(6.2f, 0.2f, -5.9f), v3(0.8f, 0.2f, 0.3f), RGB(94, 100, 116));
-    add_box(s, v3(6.2f, 0.1f, -6.35f), v3(0.8f, 0.1f, 0.15f), RGB(94, 100, 116));
-    add_box(s, v3(6.2f, 0.0f, -6.6f), v3(0.8f, 0.0f, 0.1f), RGB(94, 100, 116));
-    add_box(s, v3(4.95f, 0.3f, -4.5f), v3(0.15f, 0.3f, 1.1f), RGB(94, 100, 116));
-    add_box(s, v3(7.45f, 0.3f, -4.5f), v3(0.15f, 0.3f, 1.1f), RGB(94, 100, 116));
-    add_box(s, v3(6.2f, 0.3f, -3.25f), v3(1.1f, 0.3f, 0.15f), RGB(94, 100, 116));
-    add_box(s, v3(6.2f, 0.3f, -5.75f), v3(1.1f, 0.3f, 0.15f), RGB(94, 100, 116));
+    /* square pit: open top, walls around, floor below ground, water half-deep */
+    add_box(s, v3(5.0f, -0.8f, -5.0f), v3(1.5f, 0.2f, 1.5f), RGB(84, 90, 108)); /* floor */
+    add_box(s, v3(5.0f, -0.4f, -3.45f), v3(1.5f, 0.6f, 0.05f), RGB(94, 100, 116)); /* back wall */
+    add_box(s, v3(5.0f, -0.4f, -6.55f), v3(1.5f, 0.6f, 0.05f), RGB(94, 100, 116)); /* front wall */
+    add_box(s, v3(3.45f, -0.4f, -5.0f), v3(0.05f, 0.6f, 1.55f), RGB(94, 100, 116)); /* left wall */
+    add_box(s, v3(6.55f, -0.4f, -5.0f), v3(0.05f, 0.6f, 1.55f), RGB(94, 100, 116)); /* right wall */
+    add_box(s, v3(5.0f, 0.0f, -6.4f), v3(0.4f, 0.0f, 0.15f), RGB(110, 116, 132)); /* small step down entrance */
+    add_box(s, v3(5.0f, -0.2f, -6.7f), v3(0.8f, 0.0f, 0.15f), RGB(110, 116, 132));
 
     if (gem >= 0) {
         Obj *o = scene_add_obj(s);
@@ -237,9 +236,9 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
-    sph_init(&a.water, v3(4.9f, -0.6f, -5.7f), v3(7.5f, 0.4f, -3.3f));
+    sph_init(&a.water, v3(3.5f, -1.0f, -6.5f), v3(6.5f, 0.0f, -3.5f));
     sph_walls(&a.water, 0.0f, 0.0f);
-    sph_fill(&a.water, v3(4.9f, -0.6f, -5.7f), v3(7.5f, 0.2f, -3.3f), 0.16f);
+    sph_fill(&a.water, v3(3.5f, -1.0f, -6.5f), v3(6.5f, -0.4f, -3.5f), 0.16f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
