@@ -3,8 +3,8 @@
 
 #include "vec3.h"
 
-#define SPH_MAX 2048
-#define SPH_GRID 512
+#define SPH_MAX 4096
+#define SPH_GRID 4096
 #define SPH_SMOOTH 0.5f
 #define SPH_DT (1.0f / 120.0f)
 #define SPH_REST 150.0f

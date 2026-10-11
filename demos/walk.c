@@ -51,7 +51,15 @@ static void build_range(Scene *s, int gem)
     int i;
 
     scene_clear(s);
-    add_box(s, v3(0.0f, -0.5f, 0.0f), v3(20.0f, 0.5f, 20.0f),
+    /* the ground is a frame of four slabs that leaves an open square for the
+       pit, so the main plane does not bury it */
+    add_box(s, v3(-6.0f, -0.5f, 0.0f), v3(14.0f, 0.5f, 20.0f),
+            RGB(96, 100, 116));
+    add_box(s, v3(18.0f, -0.5f, 0.0f), v3(2.0f, 0.5f, 20.0f),
+            RGB(96, 100, 116));
+    add_box(s, v3(12.0f, -0.5f, -14.5f), v3(4.0f, 0.5f, 5.5f),
+            RGB(96, 100, 116));
+    add_box(s, v3(12.0f, -0.5f, 9.5f), v3(4.0f, 0.5f, 10.5f),
             RGB(96, 100, 116));
 
     for (i = 0; i < 6; i++) {
@@ -68,14 +76,23 @@ static void build_range(Scene *s, int gem)
     add_box(s, v3(2.4f, 0.75f, 2.0f), v3(0.5f, 0.75f, 0.5f),
             RGB(70, 180, 220));
 
-    /* square pit: open top, walls around, floor below ground, water half-deep */
-    add_box(s, v3(5.0f, -0.8f, -5.0f), v3(1.5f, 0.2f, 1.5f), RGB(84, 90, 108)); /* floor */
-    add_box(s, v3(5.0f, -0.4f, -3.45f), v3(1.5f, 0.6f, 0.05f), RGB(94, 100, 116)); /* back wall */
-    add_box(s, v3(5.0f, -0.4f, -6.55f), v3(1.5f, 0.6f, 0.05f), RGB(94, 100, 116)); /* front wall */
-    add_box(s, v3(3.45f, -0.4f, -5.0f), v3(0.05f, 0.6f, 1.55f), RGB(94, 100, 116)); /* left wall */
-    add_box(s, v3(6.55f, -0.4f, -5.0f), v3(0.05f, 0.6f, 1.55f), RGB(94, 100, 116)); /* right wall */
-    add_box(s, v3(5.0f, 0.0f, -6.4f), v3(0.4f, 0.0f, 0.15f), RGB(110, 116, 132)); /* small step down entrance */
-    add_box(s, v3(5.0f, -0.2f, -6.7f), v3(0.8f, 0.0f, 0.15f), RGB(110, 116, 132));
+    /* a square pit in the corner, its floor well below ground and its water
+       filled to half depth; a short stair leads down into it */
+    add_box(s, v3(12.0f, -1.7f, -5.0f), v3(4.0f, 0.1f, 4.0f), RGB(84, 90, 108));
+    add_box(s, v3(12.0f, -0.8f, -0.95f), v3(4.0f, 0.8f, 0.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(12.0f, -0.8f, -9.05f), v3(4.0f, 0.8f, 0.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(7.95f, -0.8f, -5.0f), v3(0.05f, 0.8f, 4.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(16.05f, -0.8f, -5.0f), v3(0.05f, 0.8f, 4.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(12.0f, -0.9f, -1.5f), v3(1.5f, 0.7f, 0.5f),
+            RGB(110, 116, 132));
+    add_box(s, v3(12.0f, -1.1f, -2.0f), v3(1.5f, 0.5f, 0.5f),
+            RGB(110, 116, 132));
+    add_box(s, v3(12.0f, -1.3f, -2.5f), v3(1.5f, 0.3f, 0.5f),
+            RGB(110, 116, 132));
 
     if (gem >= 0) {
         Obj *o = scene_add_obj(s);
@@ -236,9 +253,9 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
-    sph_init(&a.water, v3(3.5f, -1.0f, -6.5f), v3(6.5f, 0.0f, -3.5f));
+    sph_init(&a.water, v3(7.9f, -1.7f, -9.1f), v3(16.1f, 0.0f, -0.9f));
     sph_walls(&a.water, 0.0f, 0.0f);
-    sph_fill(&a.water, v3(3.5f, -1.0f, -6.5f), v3(6.5f, -0.4f, -3.5f), 0.16f);
+    sph_fill(&a.water, v3(7.9f, -1.6f, -9.1f), v3(16.1f, -0.8f, -0.9f), 0.28f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
