@@ -1,5 +1,6 @@
 #include "view.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -8,7 +9,7 @@ static const char g_ramp[] = VIEW_RAMP;
 typedef struct {
     const Scene *s;
     const Meshes *ms;
-    const Sph *sp;
+    const Water *w;
     double deadline;
     int no_deadline;
     int expired;
@@ -100,16 +101,20 @@ static Vec3 shade(const Scene *s, const Hit *h)
     return acc;
 }
 
-static Vec3 water_color(float dens, Vec3 dir)
+static Vec3 water_color(float amp, Vec3 dir)
 {
-    float bright =
-        clamp01((dens - SPH_REST * 0.6f) / (SPH_REST * 1.4f));
     float ndv = clamp01(fabsf(dir.y));
-    Vec3 col = v3_mul(rgb_vec(RGB(40, 120, 235)), 0.55f + 0.9f * bright);
+    float light = clamp01(0.25f + 0.45f * amp + 0.75f * (1.0f - ndv));
 
-    col = v3_add(col, v3_mul(rgb_vec(RGB(150, 196, 255)),
-                              (0.35f + 0.5f * bright) * (1.0f - ndv)));
-    return col;
+    if (light > 0.92f) {
+        light = 0.92f;
+    }
+    {
+        Vec3 deep = rgb_vec(RGB(24, 72, 168));
+        Vec3 glint = rgb_vec(RGB(140, 205, 255));
+
+        return v3_add(v3_mul(deep, 1.0f - light), v3_mul(glint, light));
+    }
 }
 
 static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
@@ -118,7 +123,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     Vec3 col;
     int wp;
     float wt;
-    float wd;
+    float wa;
     Vec3 wn;
 
     cx->st->rays++;
@@ -136,10 +141,23 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         }
     }
     h = cast_ray(cx->s, cx->ms, origin, dir, 1e9f);
-    if (cx->sp != NULL) {
-        wp = sph_cast(cx->sp, origin, dir, h.t, &wt, &wn, &wd);
+    if (cx->w != NULL) {
+        float ndv;
+
+        wp = water_cast(cx->w, origin, dir, h.t, &wt, &wn, &wa);
         if (wp >= 0) {
-            return mix(water_color(wd, dir), cx->fog, fog_factor(cx->s, wt));
+            ndv = clamp01(fabsf(dir.y));
+            {
+                float opacity = clamp01(0.72f + 0.23f * (1.0f - ndv));
+                Vec3 behind = cx->fog;
+
+                if (h.action != HIT_NONE && h.obj != NULL) {
+                    behind = mix(shade(cx->s, &h), cx->fog,
+                                 fog_factor(cx->s, h.t));
+                }
+                return mix(mix(behind, water_color(wa, dir), opacity),
+                           cx->fog, fog_factor(cx->s, wt));
+            }
         }
     }
     if (h.action == HIT_NONE) {
@@ -159,15 +177,19 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     return col;
 }
 
-void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
+void view_render(const Scene *s, const Meshes *ms, const Water *w,
                  const Camera *cam, Render *r, int ss, float budget_ms,
                  ViewStats *st)
 {
     static Vec3 *buf;
     static size_t cap;
+    static Vec3 *keep;
+    static size_t kcap;
+    static int *plev;
+    static size_t pcap;
     int cols = render_cols(r);
     int rows = render_rows(r);
-    int w;
+    int wsize;
     int h;
     size_t need;
     Vec3 fogv = rgb_vec(s->fog);
@@ -190,9 +212,9 @@ void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
     if (ss > 2) {
         ss = 2;
     }
-    w = cols * ss;
+    wsize = cols * ss;
     h = rows * ss;
-    need = (size_t)w * (size_t)h;
+    need = (size_t)wsize * (size_t)h;
     if (need > cap) {
         Vec3 *nb = realloc(buf, need * sizeof *buf);
 
@@ -201,6 +223,24 @@ void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
         }
         buf = nb;
         cap = need;
+    }
+    if (need > kcap) {
+        Vec3 *nk = realloc(keep, need * sizeof *keep);
+
+        if (nk == NULL) {
+            return;
+        }
+        keep = nk;
+        kcap = need;
+    }
+    if (need > pcap) {
+        int *np = calloc(need, sizeof *np);
+
+        if (np == NULL) {
+            return;
+        }
+        plev = np;
+        pcap = need;
     }
     st->rays = 0u;
     st->depth_max = 0;
@@ -216,11 +256,11 @@ void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
     right = v3_norm(v3_cross(forward, world_up));
     up = v3_cross(right, forward);
     tan_half = tanf(cam->fov * 0.5f);
-    aspect = (float)w / (float)h;
+    aspect = (float)wsize / (float)h;
 
     cx.s = s;
     cx.ms = ms;
-    cx.sp = sp;
+    cx.w = w;
     cx.no_deadline = budget_ms <= 0.0f;
     cx.deadline = cx.no_deadline ? 0.0 : now_ms() + (double)budget_ms;
     cx.expired = 0;
@@ -230,15 +270,21 @@ void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
     for (y = 0; y < h && !cx.expired; y++) {
         float py = (1.0f - 2.0f * ((float)y + 0.5f) / (float)h) * tan_half;
 
-        for (x = 0; x < w; x++) {
-            float px = (2.0f * ((float)x + 0.5f) / (float)w - 1.0f) *
+        for (x = 0; x < wsize; x++) {
+            float px = (2.0f * ((float)x + 0.5f) / (float)wsize - 1.0f) *
                        aspect * tan_half;
             Vec3 dir = v3_norm(v3_add(forward,
                                       v3_add(v3_mul(right, px),
                                              v3_mul(up, py))));
 
-            buf[(size_t)y * (size_t)w + (size_t)x] =
+            buf[(size_t)y * (size_t)wsize + (size_t)x] =
                 trace(&cx, cam->pos, dir, 0);
+        }
+    }
+    if (cx.expired) {
+        /* carry the rows cut off by the budget over from the last frame */
+        for (i = (size_t)y * (size_t)wsize; i < need; i++) {
+            buf[i] = keep[i];
         }
     }
 
@@ -253,7 +299,7 @@ void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
 
             for (sy = 0; sy < ss; sy++) {
                 for (sx = 0; sx < ss; sx++) {
-                    size_t idx = (size_t)(y * ss + sy) * (size_t)w +
+                    size_t idx = (size_t)(y * ss + sy) * (size_t)wsize +
                                  (size_t)(x * ss + sx);
 
                     c = v3_add(c, buf[idx]);
@@ -262,15 +308,29 @@ void view_render(const Scene *s, const Meshes *ms, const Sph *sp,
             c = v3_mul(c, 1.0f / (float)(ss * ss));
             lum = c.x * 0.2126f + c.y * 0.7152f + c.z * 0.0722f;
             {
-                int level = (int)(clamp01(lum) * 10.0f);
+                /* keep a glyph until its light clears the next ramp step, so an
+                   animated surface does not churn character to character */
+                size_t gi = (size_t)y * (size_t)cols + (size_t)x;
+                int lev = plev[gi];
+                int raw = (int)(clamp01(lum) * 10.0f);
 
-                if (level > 9) {
-                    level = 9;
+                if (raw > 9) {
+                    raw = 9;
                 }
-                ch = (unsigned char)g_ramp[level];
+                if (raw > lev && lum > (float)(lev + 1) * 0.10f + 0.05f) {
+                    lev = raw;
+                } else if (raw < lev &&
+                           lum < (float)lev * 0.10f - 0.05f) {
+                    lev = raw;
+                }
+                plev[gi] = lev;
+                ch = (unsigned char)g_ramp[lev];
             }
             ink = (byte_of(c.x) << 16) | (byte_of(c.y) << 8) | byte_of(c.z);
             render_put(r, x, y, ch, ink);
         }
+    }
+    for (i = 0; i < need; i++) {
+        keep[i] = buf[i];
     }
 }

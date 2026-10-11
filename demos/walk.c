@@ -1,8 +1,8 @@
 #include "engine.h"
 #include "input.h"
-#include "sph.h"
 #include "view.h"
 #include "walk.h"
+#include "water.h"
 #include "world.h"
 
 #include <math.h>
@@ -18,7 +18,7 @@
 typedef struct {
     Scene scene;
     Meshes meshes;
-    Sph water;
+    Water water;
     Camera cam;
     Walk player;
     ViewStats stats;
@@ -87,11 +87,11 @@ static void build_range(Scene *s, int gem)
             RGB(94, 100, 116));
     add_box(s, v3(16.05f, -0.8f, -5.0f), v3(0.05f, 0.8f, 4.05f),
             RGB(94, 100, 116));
-    add_box(s, v3(12.0f, -0.9f, -1.5f), v3(1.5f, 0.7f, 0.5f),
+    add_box(s, v3(12.0f, -0.6f, -1.5f), v3(1.5f, 0.2f, 0.5f),
             RGB(110, 116, 132));
-    add_box(s, v3(12.0f, -1.1f, -2.0f), v3(1.5f, 0.5f, 0.5f),
+    add_box(s, v3(12.0f, -1.0f, -2.0f), v3(1.5f, 0.2f, 0.5f),
             RGB(110, 116, 132));
-    add_box(s, v3(12.0f, -1.3f, -2.5f), v3(1.5f, 0.3f, 0.5f),
+    add_box(s, v3(12.0f, -1.4f, -2.5f), v3(1.5f, 0.2f, 0.5f),
             RGB(110, 116, 132));
 
     if (gem >= 0) {
@@ -204,18 +204,15 @@ static void app_sim(Engine *e, float dt)
     walk_move(&a->scene, &a->meshes, &a->player, wish, SPEED, dt);
     {
         Vec3 feet = a->player.pos;
-        int wet = sph_body(&a->water, feet, a->player.radius, a->player.height,
-                           a->player.vel);
-        float w = (float)wet / 40.0f;
+        int wet = water_body(&a->water, feet, a->player.radius, a->player.vel,
+                             dt);
+        float w = wet ? 1.0f : 0.0f;
         float k;
 
-        if (w > 1.0f) {
-            w = 1.0f;
-        }
         k = 1.0f - 0.8f * w * dt;
         a->player.vel.x *= k;
         a->player.vel.z *= k;
-        sph_step(&a->water, dt);
+        water_step(&a->water, dt);
     }
     a->cam.pos = v3(a->player.pos.x, a->player.pos.y + EYE, a->player.pos.z);
 }
@@ -253,9 +250,8 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
-    sph_init(&a.water, v3(7.9f, -1.7f, -9.1f), v3(16.1f, 0.0f, -0.9f));
-    sph_walls(&a.water, 0.0f, 0.0f);
-    sph_fill(&a.water, v3(7.9f, -1.6f, -9.1f), v3(16.1f, -0.8f, -0.9f), 0.28f);
+    water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
+               -0.8f, 0.5f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;

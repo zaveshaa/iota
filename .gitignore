@@ -4,8 +4,8 @@
 /walk
 /walktest
 /meshtest
+/watertest
 *.o
 
 # macOS
 .DS_Store
-/sphtest

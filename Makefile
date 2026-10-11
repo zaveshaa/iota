@@ -11,7 +11,7 @@ endif
 
 BIN      ?= iota
 CORE      = src/term.c src/render.c src/world.c src/cast.c src/view.c \
-            src/engine.c src/scene.c src/walk.c src/mesh.c src/sph.c
+            src/engine.c src/scene.c src/walk.c src/mesh.c src/water.c
 SRC       = $(CORE) demos/mirror.c
 TEST_BIN  ?= golden
 TEST_SRC   = $(CORE) tests/golden.c
@@ -21,8 +21,8 @@ WALK_TEST ?= walktest
 WALK_TEST_SRC = $(CORE) tests/walktest.c
 MESH_TEST ?= meshtest
 MESH_TEST_SRC = src/mesh.c tests/meshtest.c
-SPH_TEST ?= sphtest
-SPH_TEST_SRC = src/sph.c tests/sphtest.c
+WATER_TEST ?= watertest
+WATER_TEST_SRC = src/water.c tests/watertest.c
 HDR       = $(wildcard include/*.h)
 GOLDEN    = tests/golden/mirror.txt
 
@@ -43,14 +43,14 @@ $(WALK_TEST): $(WALK_TEST_SRC) $(HDR)
 $(MESH_TEST): $(MESH_TEST_SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(MESH_TEST_SRC) $(LDFLAGS)
 
-$(SPH_TEST): $(SPH_TEST_SRC) $(HDR)
-	$(CC) $(CFLAGS) -o $@ $(SPH_TEST_SRC) $(LDFLAGS)
+$(WATER_TEST): $(WATER_TEST_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(WATER_TEST_SRC) $(LDFLAGS)
 
-test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST) $(SPH_TEST)
+test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST)
 	./$(TEST_BIN) $(GOLDEN)
 	./$(WALK_TEST)
 	./$(MESH_TEST)
-	./$(SPH_TEST)
+	./$(WATER_TEST)
 
 regen: $(TEST_BIN)
 	./$(TEST_BIN) --write $(GOLDEN)
@@ -74,6 +74,6 @@ help:
 	@echo "  make clean      remove the build"
 
 clean:
-	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST) $(MESH_TEST) $(SPH_TEST)
+	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST)
 
 .PHONY: all test regen run install help clean
