@@ -110,7 +110,7 @@ static void ripples_stay_bounded(void)
 {
     Water w = make_pool();
     float max_d = 0.0f;
-    float ok = 1.0f;
+    int ok = 1;
     int k;
 
     for (k = 0; k < 200; k++) {
@@ -129,7 +129,7 @@ static void ripples_stay_bounded(void)
             max_d = d;
         }
         if (!is_finite(water_surface(&w, x, z)) || d > 1.0f) {
-            ok = 0.0f;
+            ok = 0;
         }
     }
     check(ok && max_d > 1e-3f,
