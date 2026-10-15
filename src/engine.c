@@ -5,6 +5,7 @@
 
 #define STEP (1.0 / 60.0)
 #define FRAME_TIME 0.016
+#define FRAME_BUDGET_MS 11.0
 
 struct Engine {
     Render *render;
@@ -161,9 +162,12 @@ void engine_run(Engine *e)
         render_present(e->render);
         e->draw_ms = (now_sec() - d0) * 1000.0;
 
-        if (e->draw_ms < 8.0 && e->ss == 1) {
-            e->ss = 2;
-        } else if (e->draw_ms > 11.5 && e->ss == 2) {
+        /* two samples are worth it only if they fit the budget */
+        if (e->ss == 1) {
+            if (e->draw_ms * 2.0 < FRAME_BUDGET_MS) {
+                e->ss = 2;
+            }
+        } else if (e->draw_ms > FRAME_BUDGET_MS) {
             e->ss = 1;
         }
 

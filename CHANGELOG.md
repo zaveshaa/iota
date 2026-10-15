@@ -14,6 +14,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Moller-Trumbore ray test.
 - A scene can hold a mesh, so a ray casts against its triangles and the walk
   demo hangs a loaded gem over the range.
+- Water: a smoothed-particle pool sits in the walk range, splashes where the
+  body steps through it, and a body in the water drags as it wades.
 
 ### Changed
 

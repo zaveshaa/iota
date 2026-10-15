@@ -4,6 +4,7 @@
 /walk
 /walktest
 /meshtest
+/watertest
 *.o
 
 # macOS

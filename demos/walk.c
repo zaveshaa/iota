@@ -2,8 +2,10 @@
 #include "input.h"
 #include "view.h"
 #include "walk.h"
+#include "water.h"
 #include "world.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -16,6 +18,7 @@
 typedef struct {
     Scene scene;
     Meshes meshes;
+    Water water;
     Camera cam;
     Walk player;
     ViewStats stats;
@@ -24,6 +27,7 @@ typedef struct {
     Vec3 prev_pos;
     float prev_yaw;
     float prev_pitch;
+    float source_acc;
 } App;
 
 static float lerpf(float a, float b, float t)
@@ -47,7 +51,15 @@ static void build_range(Scene *s, int gem)
     int i;
 
     scene_clear(s);
-    add_box(s, v3(0.0f, -0.5f, 0.0f), v3(20.0f, 0.5f, 20.0f),
+    /* the ground is a frame of four slabs that leaves an open square for the
+       pit, so the main plane does not bury it */
+    add_box(s, v3(-6.0f, -0.5f, 0.0f), v3(14.0f, 0.5f, 20.0f),
+            RGB(96, 100, 116));
+    add_box(s, v3(18.0f, -0.5f, 0.0f), v3(2.0f, 0.5f, 20.0f),
+            RGB(96, 100, 116));
+    add_box(s, v3(12.0f, -0.5f, -14.5f), v3(4.0f, 0.5f, 5.5f),
+            RGB(96, 100, 116));
+    add_box(s, v3(12.0f, -0.5f, 9.5f), v3(4.0f, 0.5f, 10.5f),
             RGB(96, 100, 116));
 
     for (i = 0; i < 6; i++) {
@@ -63,6 +75,24 @@ static void build_range(Scene *s, int gem)
             RGB(224, 144, 64));
     add_box(s, v3(2.4f, 0.75f, 2.0f), v3(0.5f, 0.75f, 0.5f),
             RGB(70, 180, 220));
+
+    /* a square pit in the corner, its floor well below ground and its water
+       filled to half depth; a short stair leads down into it */
+    add_box(s, v3(12.0f, -1.7f, -5.0f), v3(4.0f, 0.1f, 4.0f), RGB(84, 90, 108));
+    add_box(s, v3(12.0f, -0.8f, -0.95f), v3(4.0f, 0.8f, 0.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(12.0f, -0.8f, -9.05f), v3(4.0f, 0.8f, 0.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(7.95f, -0.8f, -5.0f), v3(0.05f, 0.8f, 4.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(16.05f, -0.8f, -5.0f), v3(0.05f, 0.8f, 4.05f),
+            RGB(94, 100, 116));
+    add_box(s, v3(12.0f, -0.6f, -1.5f), v3(1.5f, 0.2f, 0.5f),
+            RGB(110, 116, 132));
+    add_box(s, v3(12.0f, -1.0f, -2.0f), v3(1.5f, 0.2f, 0.5f),
+            RGB(110, 116, 132));
+    add_box(s, v3(12.0f, -1.4f, -2.5f), v3(1.5f, 0.2f, 0.5f),
+            RGB(110, 116, 132));
 
     if (gem >= 0) {
         Obj *o = scene_add_obj(s);
@@ -87,6 +117,14 @@ static void build_range(Scene *s, int gem)
         l->pos = v3(0.0f, 4.0f, 4.0f);
         l->color = v3(1.0f, 0.97f, 0.92f);
         l->intensity = 4.0f;
+    }
+    {
+        Light *l = scene_add_light(s);
+
+        l->kind = LIGHT_POINT;
+        l->pos = v3(-4.8f, 2.0f, 3.2f);
+        l->color = v3(0.85f, 0.95f, 1.0f);
+        l->intensity = 2.0f;
     }
 }
 
@@ -164,6 +202,18 @@ static void app_sim(Engine *e, float dt)
     }
 
     walk_move(&a->scene, &a->meshes, &a->player, wish, SPEED, dt);
+    {
+        Vec3 feet = a->player.pos;
+        int wet = water_body(&a->water, feet, a->player.radius, a->player.vel,
+                             dt);
+        float w = wet ? 1.0f : 0.0f;
+        float k;
+
+        k = 1.0f - 0.8f * w * dt;
+        a->player.vel.x *= k;
+        a->player.vel.z *= k;
+        water_step(&a->water, dt);
+    }
     a->cam.pos = v3(a->player.pos.x, a->player.pos.y + EYE, a->player.pos.z);
 }
 
@@ -180,7 +230,7 @@ static void app_draw(Engine *e)
                   lerpf(a->prev_pos.z, a->player.pos.z, alpha));
     view.yaw = lerpf(a->prev_yaw, a->cam.yaw, alpha);
     view.pitch = lerpf(a->prev_pitch, a->cam.pitch, alpha);
-    view_render(&a->scene, &a->meshes, &view, r, engine_ss(e),
+    view_render(&a->scene, &a->meshes, &a->water, &view, r, engine_ss(e),
                 (float)VIEW_BUDGET_MS, &a->stats);
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,
@@ -200,6 +250,8 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
+    water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
+               -0.8f, 0.5f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
@@ -216,3 +268,4 @@ int main(void)
     engine_close(e);
     return 0;
 }
+

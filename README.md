@@ -47,15 +47,19 @@ The build is warning-clean under `-Wall -Wextra -Wpedantic -Wshadow
 
     make run
 
-A frame renders within a time budget; when a frame comes back early the
-engine raises the supersampling to two rays per cell, and when it runs out
-of budget it drops back to one. The window is any size the terminal gives
-it, and the status line shows the millisecond cost, the ray count, the
-recursion depth and whether the budget was hit.
+A frame renders within a time budget; when a frame at one ray per cell comes
+back with room to double the work the engine raises the supersampling to two
+rays per cell, and when a frame misses the budget it drops back to one. Every
+frame is drawn whole, so turning never smears the last view over the screen.
+The window is any size the terminal gives it, and the status line shows the
+millisecond cost, the ray count, the recursion depth and whether the budget
+was hit.
 
 `./walk` opens a test range. The body walks, climbs the stairs it can step
 onto, is stopped by the wall it cannot, and jumps. The far wall is a mirror,
-so the range reflects back along it.
+so the range reflects back along it. A smoothed-particle pool lies in the
+way of the walk, thrown into splashes as the body steps through it, and the
+body wades slower under the water's drag.
 
 ## Controls
 
@@ -75,13 +79,20 @@ it — and fog takes over with distance.
 
 A hit carries an action. A plain surface is shaded and done; a mirror
 reflects the ray about the surface normal and traces again, up to two
-bounces deep, each bounce measured against the frame's time budget. When
-the budget runs out the frame stops at the fog, the status line says
-`BUDGET`, and the engine lowers the sample count for the next frame.
+bounces deep. A frame that overruns the budget says `BUDGET` on the status
+line, and the engine lowers the sample count for the next frame rather than
+stopping the ray early.
 
 Triangles are another surface. An OBJ loader reads them into a bounding
 volume hierarchy, and a ray casts against the ones it crosses, so a model
 files through a scene the way a box does.
+
+Water is a cloud of particles in a smoothed-particle pool: each one sums its
+neighbours' density, feels the pressure and drag that density gives, falls
+under gravity and bounces off the trough. The body shoves the drops aside,
+its motion casts them up in a splash, and the view walks a ray through the
+pool, shading the first place the density turns to water: the surface shows
+the ripples and the splash throws up a spray.
 
 ## Layout
 
