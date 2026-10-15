@@ -98,6 +98,14 @@ static Vec3 shade(const Scene *s, const Hit *h)
     return acc;
 }
 
+static Vec3 sky_color(const Scene *s, Vec3 dir)
+{
+    float t = clamp01(dir.y);
+
+    t *= t;
+    return mix(rgb_vec(s->sky_horizon), rgb_vec(s->sky_top), t);
+}
+
 static Vec3 water_color(float amp, Vec3 dir)
 {
     float ndv = clamp01(fabsf(dir.y));
@@ -136,7 +144,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
             ndv = clamp01(fabsf(dir.y));
             {
                 float opacity = clamp01(0.55f + 0.20f * (1.0f - ndv));
-                Vec3 behind = cx->fog;
+                Vec3 behind = sky_color(cx->s, dir);
 
                 if (h.action != HIT_NONE && h.obj != NULL) {
                     behind = mix(shade(cx->s, &h), cx->fog,
@@ -148,7 +156,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         }
     }
     if (h.action == HIT_NONE) {
-        return cx->fog;
+        return sky_color(cx->s, dir);
     }
     if (h.action == HIT_MIRROR && depth < VIEW_MAX_DEPTH) {
         Vec3 rd = v3_norm(v3_reflect(dir, h.normal));
