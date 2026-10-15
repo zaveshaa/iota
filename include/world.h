@@ -43,6 +43,8 @@ typedef struct {
     unsigned fog;
     float fog_start;
     float fog_range;
+    unsigned sky_top;
+    unsigned sky_horizon;
 } Scene;
 
 void scene_clear(Scene *s);
