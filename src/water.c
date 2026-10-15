@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define C2 0.30f
-#define DAMP 0.030f
+#define C2 0.40f
+#define DAMP 0.010f
 #define RIPPLE_MAX 0.6f
 #define GRAZE_EPS 0.16f
 
@@ -55,9 +55,9 @@ static int clamp_i(int x, int lo, int hi)
 
 static float wave_sum(float x, float z, float t)
 {
-    return 0.10f * sinf(0.62f * x - 1.70f * t) +
-           0.075f * sinf(0.85f * z + 2.60f * t + 0.90f) +
-           0.05f * sinf(0.72f * (x + z) - 3.40f * t + 0.40f);
+    return 0.15f * sinf(0.62f * x - 2.10f * t) +
+           0.11f * sinf(0.85f * z + 3.10f * t + 0.90f) +
+           0.075f * sinf(0.72f * (x + z) - 4.10f * t + 0.40f);
 }
 
 static float ripple_at(const Water *w, float x, float z)
@@ -205,8 +205,8 @@ int water_body(Water *w, Vec3 feet, float radius, Vec3 vel, float dt)
     if (feet.y >= surf - 1e-3f) {
         return 0;
     }
-    add_ripple(w, feet.x, feet.z, radius + 0.30f,
-               (1.20f + 3.50f * v3_len(vel)) * dt);
+    add_ripple(w, feet.x, feet.z, radius + 0.55f,
+               (2.20f + 6.50f * v3_len(vel)) * dt);
     return 1;
 }
 

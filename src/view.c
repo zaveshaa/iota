@@ -10,9 +10,6 @@ typedef struct {
     const Scene *s;
     const Meshes *ms;
     const Water *w;
-    double deadline;
-    int no_deadline;
-    int expired;
     Vec3 fog;
     ViewStats *st;
 } Ctx;
@@ -130,16 +127,6 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     if (depth > cx->st->depth_max) {
         cx->st->depth_max = depth;
     }
-    if (!cx->no_deadline) {
-        if (cx->expired) {
-            return cx->fog;
-        }
-        if ((cx->st->rays & 63u) == 0u && now_ms() >= cx->deadline) {
-            cx->expired = 1;
-            cx->st->budget_hit = 1;
-            return cx->fog;
-        }
-    }
     h = cast_ray(cx->s, cx->ms, origin, dir, 1e9f);
     if (cx->w != NULL) {
         float ndv;
@@ -148,7 +135,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         if (wp >= 0) {
             ndv = clamp01(fabsf(dir.y));
             {
-                float opacity = clamp01(0.72f + 0.23f * (1.0f - ndv));
+                float opacity = clamp01(0.55f + 0.20f * (1.0f - ndv));
                 Vec3 behind = cx->fog;
 
                 if (h.action != HIT_NONE && h.obj != NULL) {
@@ -183,8 +170,6 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
 {
     static Vec3 *buf;
     static size_t cap;
-    static Vec3 *keep;
-    static size_t kcap;
     static int *plev;
     static size_t pcap;
     int cols = render_cols(r);
@@ -192,6 +177,7 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
     int wsize;
     int h;
     size_t need;
+    double started = now_ms();
     Vec3 fogv = rgb_vec(s->fog);
     Vec3 forward;
     Vec3 right;
@@ -224,15 +210,6 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
         buf = nb;
         cap = need;
     }
-    if (need > kcap) {
-        Vec3 *nk = realloc(keep, need * sizeof *keep);
-
-        if (nk == NULL) {
-            return;
-        }
-        keep = nk;
-        kcap = need;
-    }
     if (need > pcap) {
         int *np = calloc(need, sizeof *np);
 
@@ -261,13 +238,10 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
     cx.s = s;
     cx.ms = ms;
     cx.w = w;
-    cx.no_deadline = budget_ms <= 0.0f;
-    cx.deadline = cx.no_deadline ? 0.0 : now_ms() + (double)budget_ms;
-    cx.expired = 0;
     cx.fog = fogv;
     cx.st = st;
 
-    for (y = 0; y < h && !cx.expired; y++) {
+    for (y = 0; y < h; y++) {
         float py = (1.0f - 2.0f * ((float)y + 0.5f) / (float)h) * tan_half;
 
         for (x = 0; x < wsize; x++) {
@@ -281,12 +255,8 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
                 trace(&cx, cam->pos, dir, 0);
         }
     }
-    if (cx.expired) {
-        /* carry the rows cut off by the budget over from the last frame */
-        for (i = (size_t)y * (size_t)wsize; i < need; i++) {
-            buf[i] = keep[i];
-        }
-    }
+    st->budget_hit = budget_ms > 0.0f &&
+                     now_ms() - started > (double)budget_ms;
 
     for (y = 0; y < rows; y++) {
         for (x = 0; x < cols; x++) {
@@ -317,10 +287,10 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
                 if (raw > 9) {
                     raw = 9;
                 }
-                if (raw > lev && lum > (float)(lev + 1) * 0.10f + 0.05f) {
+                if (raw > lev && lum > (float)(lev + 1) * 0.10f + 0.03f) {
                     lev = raw;
                 } else if (raw < lev &&
-                           lum < (float)lev * 0.10f - 0.05f) {
+                           lum < (float)lev * 0.10f - 0.03f) {
                     lev = raw;
                 }
                 plev[gi] = lev;
@@ -329,8 +299,5 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
             ink = (byte_of(c.x) << 16) | (byte_of(c.y) << 8) | byte_of(c.z);
             render_put(r, x, y, ch, ink);
         }
-    }
-    for (i = 0; i < need; i++) {
-        keep[i] = buf[i];
     }
 }
