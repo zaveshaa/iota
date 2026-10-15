@@ -137,6 +137,30 @@ static int on_grout(Vec3 p, Vec3 n)
     return fu < edge || fu > 1.0f - edge || fv < edge || fv > 1.0f - edge;
 }
 
+static void plot_point(Render *r, Vec3 p, Vec3 eye, Vec3 fwd, Vec3 rt, Vec3 up,
+                       float tan_half, float aspect, int cols, int rows,
+                       unsigned char ch, unsigned ink)
+{
+    Vec3 rel = v3_sub(p, eye);
+    float z = v3_dot(rel, fwd);
+    float xr;
+    float yu;
+    int cx;
+    int cy;
+
+    if (z <= 0.05f) {
+        return;
+    }
+    xr = v3_dot(rel, rt) / (z * aspect * tan_half);
+    yu = v3_dot(rel, up) / (z * tan_half);
+    if (xr < -1.0f || xr > 1.0f || yu < -1.0f || yu > 1.0f) {
+        return;
+    }
+    cx = (int)((xr + 1.0f) * 0.5f * (float)cols);
+    cy = (int)((1.0f - yu) * 0.5f * (float)rows);
+    render_put(r, cx, cy, ch, ink);
+}
+
 static Vec3 water_color(float amp, Vec3 dir)
 {
     float ndv = clamp01(fabsf(dir.y));
@@ -348,6 +372,42 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
             }
             ink = (byte_of(c.x) << 16) | (byte_of(c.y) << 8) | byte_of(c.z);
             render_put(r, x, y, ch, ink);
+        }
+    }
+
+    if (w != NULL) {
+        int k;
+
+        if (w->spout_on) {
+            float sy = water_surface(w, w->spout_x, w->spout_z);
+            unsigned ink = RGB(120, 178, 236);
+
+            for (k = 0; k <= 12; k++) {
+                float f = (float)k / 12.0f;
+                Vec3 p = v3(w->spout_x, w->spout_y + (sy - w->spout_y) * f,
+                            w->spout_z);
+
+                plot_point(r, p, cam->pos, forward, right, up, tan_half,
+                           aspect, cols, rows, (unsigned char)'|', ink);
+            }
+        }
+        for (k = 0; k < w->steam_n; k++) {
+            const Steam *puff = &w->steam[k];
+            float f = puff->life / puff->span;
+            unsigned char ch;
+            unsigned ink;
+            int v;
+
+            if (f < 0.18f) {
+                continue;
+            }
+            ch = f > 0.6f ? (unsigned char)'`'
+                          : (f > 0.35f ? (unsigned char)'.'
+                                       : (unsigned char)',');
+            v = (int)(255.0f * (0.35f + 0.65f * f));
+            ink = RGB(v * 190 / 255, v * 214 / 255, v * 245 / 255);
+            plot_point(r, puff->p, cam->pos, forward, right, up, tan_half,
+                       aspect, cols, rows, ch, ink);
         }
     }
 }

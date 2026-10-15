@@ -138,6 +138,30 @@ static void ripples_stay_bounded(void)
     water_close(&w);
 }
 
+static void spout_stirs_and_steams(void)
+{
+    Water w = make_pool();
+    Water q = make_pool();
+    int differs = 0;
+    int i;
+
+    water_spout(&w, v3(0.0f, 2.0f, 2.0f), 1.0f);
+    step(&w, 1.0f);
+    step(&q, 1.0f);
+    check(w.steam_n > 0, "a spout lifts steam off the pool");
+    for (i = 0; i < w.nx * w.nz; i++) {
+        float x = w.x0 + (float)(i % w.nx) * w.spacing;
+        float z = w.z0 + (float)(i / w.nx) * w.spacing;
+
+        if (fabsf(water_surface(&w, x, z) - water_surface(&q, x, z)) > 1e-3f) {
+            differs = 1;
+        }
+    }
+    check(differs, "a spout keeps the pool moving");
+    water_close(&w);
+    water_close(&q);
+}
+
 static void deterministic(void)
 {
     Water a = make_pool();
@@ -172,6 +196,7 @@ int main(void)
     surface_moves();
     body_stirs_the_pool();
     ripples_stay_bounded();
+    spout_stirs_and_steams();
     deterministic();
     (void)printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures != 0;
