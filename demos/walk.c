@@ -252,6 +252,7 @@ int main(void)
     build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
     water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
                -0.8f, 0.5f);
+    water_spout(&a.water, v3(10.0f, 2.2f, -3.0f), 1.1f);
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;

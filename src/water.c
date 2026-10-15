@@ -161,12 +161,81 @@ void water_close(Water *w)
     memset(w, 0, sizeof *w);
 }
 
+static void add_ripple(Water *w, float x, float z, float radius, float amp);
+
+static float rng_unit(unsigned *state)
+{
+    *state = *state * 1664525u + 1013904223u;
+    return (float)((*state >> 8) & 0xffffu) / 65535.0f;
+}
+
+static void steam_spawn(Water *w)
+{
+    Steam *s;
+
+    if (w->steam_n >= WATER_STEAM_MAX) {
+        return;
+    }
+    s = &w->steam[w->steam_n];
+    w->steam_n++;
+    s->p = v3(w->spout_x + (rng_unit(&w->rng) - 0.5f) * 0.5f,
+              water_surface(w, w->spout_x, w->spout_z) + 0.05f,
+              w->spout_z + (rng_unit(&w->rng) - 0.5f) * 0.5f);
+    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.4f,
+              0.6f + rng_unit(&w->rng) * 0.9f,
+              (rng_unit(&w->rng) - 0.5f) * 0.4f);
+    s->span = 0.9f + rng_unit(&w->rng) * 0.9f;
+    s->life = s->span;
+}
+
+static void steam_step(Water *w, float dt)
+{
+    int i = 0;
+
+    while (i < w->steam_n) {
+        Steam *s = &w->steam[i];
+
+        s->life -= dt;
+        if (s->life <= 0.0f) {
+            w->steam[i] = w->steam[w->steam_n - 1];
+            w->steam_n--;
+            continue;
+        }
+        s->p = v3_add(s->p, v3_mul(s->v, dt));
+        s->v.y -= 0.35f * dt;
+        s->v.x *= 1.0f - 0.6f * dt;
+        s->v.z *= 1.0f - 0.6f * dt;
+        i++;
+    }
+}
+
+void water_spout(Water *w, Vec3 top, float rate)
+{
+    w->spout_on = 1;
+    w->spout_x = top.x;
+    w->spout_y = top.y;
+    w->spout_z = top.z;
+    w->spout_rate = rate > 0.0f ? rate : 0.0f;
+}
+
 void water_step(Water *w, float dt)
 {
     if (w->cur == NULL) {
         return;
     }
     w->t += dt;
+    if (w->spout_on) {
+        float pulse = 0.7f + 0.3f * sinf(w->t * 6.5f);
+
+        add_ripple(w, w->spout_x, w->spout_z, 0.32f,
+                   (0.9f + 0.3f * pulse) * w->spout_rate * dt);
+        w->spawn_acc += w->spout_rate * dt * 14.0f;
+        while (w->spawn_acc >= 1.0f) {
+            w->spawn_acc -= 1.0f;
+            steam_spawn(w);
+        }
+    }
+    steam_step(w, dt);
     ripple_step(w);
 }
 
