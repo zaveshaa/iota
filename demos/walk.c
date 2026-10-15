@@ -54,13 +54,13 @@ static void build_range(Scene *s, int gem)
     /* the ground is a frame of four slabs that leaves an open square for the
        pit, so the main plane does not bury it */
     add_box(s, v3(-6.0f, -0.5f, 0.0f), v3(14.0f, 0.5f, 20.0f),
-            RGB(96, 100, 116));
+            RGB(96, 100, 116))->flags = OBJ_TILE;
     add_box(s, v3(18.0f, -0.5f, 0.0f), v3(2.0f, 0.5f, 20.0f),
-            RGB(96, 100, 116));
+            RGB(96, 100, 116))->flags = OBJ_TILE;
     add_box(s, v3(12.0f, -0.5f, -14.5f), v3(4.0f, 0.5f, 5.5f),
-            RGB(96, 100, 116));
+            RGB(96, 100, 116))->flags = OBJ_TILE;
     add_box(s, v3(12.0f, -0.5f, 9.5f), v3(4.0f, 0.5f, 10.5f),
-            RGB(96, 100, 116));
+            RGB(96, 100, 116))->flags = OBJ_TILE;
 
     for (i = 0; i < 6; i++) {
         float h = 0.25f * (float)(i + 1);

@@ -6,7 +6,8 @@
 typedef enum {
     HIT_NONE,
     HIT_CONTINUE,
-    HIT_MIRROR
+    HIT_MIRROR,
+    HIT_TILE
 } HitAction;
 
 typedef struct {

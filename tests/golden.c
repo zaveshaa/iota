@@ -120,6 +120,27 @@ static void cast_checks(const Scene *s)
           "the wall occludes the floor behind it", detail);
 }
 
+static void tile_checks(void)
+{
+    Scene s;
+    Obj *o;
+    Hit h;
+
+    scene_clear(&s);
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 0.0f, 0.0f);
+    o->half = v3(1.0f, 1.0f, 1.0f);
+    o->flags = OBJ_TILE;
+
+    h = cast_ray(&s, NULL, v3(0.0f, 3.0f, 0.0f), v3(0.0f, -1.0f, 0.0f), 100.0f);
+    check(h.action == HIT_TILE, "a tiled floor asks to be a faint mirror", NULL);
+
+    o->flags = OBJ_NONE;
+    h = cast_ray(&s, NULL, v3(0.0f, 3.0f, 0.0f), v3(0.0f, -1.0f, 0.0f), 100.0f);
+    check(h.action == HIT_CONTINUE, "an untiled floor is a plain surface", NULL);
+}
+
 static int read_golden(const char *path, unsigned *want)
 {
     FILE *f = fopen(path, "rb");
@@ -190,6 +211,7 @@ int main(int argc, char **argv)
 
     mirror_scene(&scene, &cam);
     cast_checks(&scene);
+    tile_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {

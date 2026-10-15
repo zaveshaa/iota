@@ -18,7 +18,8 @@ typedef enum {
 
 enum {
     OBJ_NONE = 0,
-    OBJ_MIRROR = 1u << 0
+    OBJ_MIRROR = 1u << 0,
+    OBJ_TILE = 1u << 1
 };
 
 typedef struct {
