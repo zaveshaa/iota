@@ -147,8 +147,13 @@ Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
         if (v3_dot(n, dir) > 0.0f) {
             n = v3_mul(n, -1.0f);
         }
-        best.action = (o->flags & OBJ_MIRROR) != 0u ? HIT_MIRROR
-                                                    : HIT_CONTINUE;
+        if ((o->flags & OBJ_MIRROR) != 0u) {
+            best.action = HIT_MIRROR;
+        } else if ((o->flags & OBJ_TILE) != 0u) {
+            best.action = HIT_TILE;
+        } else {
+            best.action = HIT_CONTINUE;
+        }
         best.t = t;
         best.point = v3_add(origin, v3_mul(dir, t));
         best.normal = n;

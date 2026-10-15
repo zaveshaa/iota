@@ -106,6 +106,37 @@ static Vec3 sky_color(const Scene *s, Vec3 dir)
     return mix(rgb_vec(s->sky_horizon), rgb_vec(s->sky_top), t);
 }
 
+#define TILE_SIZE 0.8f
+#define TILE_GROUT 0.06f
+#define TILE_REFLECT 0.30f
+
+static int face_axis(Vec3 n)
+{
+    float ax = fabsf(n.x);
+    float ay = fabsf(n.y);
+    float az = fabsf(n.z);
+
+    if (ax >= ay && ax >= az) {
+        return 0;
+    }
+    if (ay >= az) {
+        return 1;
+    }
+    return 2;
+}
+
+static int on_grout(Vec3 p, Vec3 n)
+{
+    int axis = face_axis(n);
+    float u = axis == 0 ? p.y : p.x;
+    float v = axis == 2 ? p.y : p.z;
+    float fu = u / TILE_SIZE - floorf(u / TILE_SIZE);
+    float fv = v / TILE_SIZE - floorf(v / TILE_SIZE);
+    float edge = TILE_GROUT / TILE_SIZE;
+
+    return fu < edge || fu > 1.0f - edge || fv < edge || fv > 1.0f - edge;
+}
+
 static Vec3 water_color(float amp, Vec3 dir)
 {
     float ndv = clamp01(fabsf(dir.y));
@@ -169,6 +200,17 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         return cx->fog;
     }
     col = mix(shade(cx->s, &h), cx->fog, fog_factor(cx->s, h.t));
+    if (h.action == HIT_TILE) {
+        if (on_grout(h.point, h.normal)) {
+            col = v3_mul(col, 0.18f);
+        } else if (depth < VIEW_MAX_DEPTH) {
+            Vec3 rd = v3_norm(v3_reflect(dir, h.normal));
+            Vec3 ro = v3_add(h.point, v3_mul(h.normal, 2e-3f));
+            Vec3 refl = trace(cx, ro, rd, depth + 1);
+
+            col = mix(col, refl, TILE_REFLECT);
+        }
+    }
     return col;
 }
 
