@@ -269,8 +269,8 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
     if (ss < 1) {
         ss = 1;
     }
-    if (ss > 2) {
-        ss = 2;
+    if (ss > VIEW_SS_MAX) {
+        ss = VIEW_SS_MAX;
     }
     wsize = cols * ss;
     h = rows * ss;
