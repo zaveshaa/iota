@@ -257,6 +257,9 @@ int main(int argc, char **argv)
         water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
                    -0.8f, 0.5f);
         water_spout(&a.water, v3(10.0f, 2.2f, -3.0f), 1.1f);
+    } else if (a.scene.have_water) {
+        water_open(&a.water, a.scene.water.lo, a.scene.water.hi,
+                   a.scene.water.level, a.scene.water.spacing);
     }
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;

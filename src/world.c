@@ -13,6 +13,11 @@ void scene_clear(Scene *s)
     s->sky_horizon = RGB(56, 72, 118);
     s->spawn = v3(0.0f, 0.0f, 0.0f);
     s->have_spawn = 0;
+    s->water.lo = v3(0.0f, 0.0f, 0.0f);
+    s->water.hi = v3(0.0f, 0.0f, 0.0f);
+    s->water.level = 0.0f;
+    s->water.spacing = 0.5f;
+    s->have_water = 0;
 }
 
 Obj *scene_add_obj(Scene *s)

@@ -64,36 +64,39 @@ way of the walk, thrown into splashes as the body steps through it, and the
 body wades slower under the water's drag. `./walk <level>` opens a saved
 level instead, and drops the body at its spawn.
 
-`./editor [level]` lays out a level. The camera flies free, the pointer picks
-the cell to aim at, and a click sets a panel of the chosen surface on whatever
-the cursor ray hits: plain wall, faint tile, or mirror. `p` marks the green
-spawn the walk starts from, `t` starts a staircase — click its foot and its
-top and the steps are laid between them — and `Ctrl+S` and `Ctrl+O` write and
-read the level as text.
+`./editor [level]` lays out a level. The camera flies free and the pointer
+moves a cursor whose ray picks the surface under it. A tool shapes what a pair
+of clicks builds: a `box` spans two corners in the chosen material, `water`
+floods a rectangle, `stairs` rise from a foot to a top, `spawn` sets where the
+body starts, `light` hangs a lamp, and `erase` takes a panel away. The first
+click drops an anchor, a ghost previews the build as the pointer moves, and
+the second click lays it down. `Ctrl+S` and `Ctrl+O` write and read the level
+as text.
 
 ## Level format
 
 A level is text, one directive per line, `#` comments. `iota 1` heads the
 file; `spawn` gives the body's start; `ambient`, `fog` and `sky` carry the
-lighting and the sky colours; `obj` lists a box, sphere, plane or mesh with
-its position, half extents, axis, colour, flags and mesh index; `light` lists
-a point or sun light. Colours are six hex digits, flags are the object's bits.
+lighting and the sky colours; `water` marks a pool's rectangle, level and grid
+spacing; `obj` lists a box, sphere, plane or mesh with its position, half
+extents, axis, colour, flags and mesh index; `light` lists a point or sun
+light. Colours are six hex digits, flags are the object's bits.
 
 ## Editor controls
 
 | Key | Action |
 | --- | --- |
-| mouse | aim the cursor, click to place a panel |
-| right click / `x` | remove the panel under the cursor |
+| mouse | move the cursor, click to anchor and to build |
+| `1` `2` `3` `4` `5` `6` | tool: box, water, stairs, spawn, light, erase |
+| `m` | block material: wall, tile, mirror |
+| right click | cancel the anchor, or take the panel under the cursor |
 | `W` `A` `S` `D` | fly along the view |
 | `space` / `c` | rise and sink |
 | arrow keys | look |
-| `1` `2` `3` | panel: wall, tile, mirror |
-| `[` `]` | panel size, `-` `=` thickness |
-| `t` | staircase from two clicks |
-| `p` | set the spawn |
+| `g` | toggle grid snapping |
+| `p` | set the spawn at the cursor |
 | `u` | undo, `n` new, `Ctrl+S` save, `Ctrl+O` load |
-| `Esc` | quit |
+| `Esc` | cancel the anchor, or quit |
 
 ## Controls
 

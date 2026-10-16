@@ -35,6 +35,15 @@ typedef struct {
 #define SCENE_MAX_OBJS 64
 #define SCENE_MAX_LIGHTS 8
 
+// where a pool of water sits: a rectangle in the ground plane and the height
+// its surface rests at, with the spacing the ripple grid is laid out on
+typedef struct {
+    Vec3 lo;
+    Vec3 hi;
+    float level;
+    float spacing;
+} WaterSpec;
+
 typedef struct {
     Obj objs[SCENE_MAX_OBJS];
     int obj_count;
@@ -48,6 +57,8 @@ typedef struct {
     unsigned sky_horizon;
     Vec3 spawn;
     int have_spawn;
+    WaterSpec water;
+    int have_water;
 } Scene;
 
 void scene_clear(Scene *s);
