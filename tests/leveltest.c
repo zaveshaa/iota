@@ -44,6 +44,11 @@ static void round_trip(void)
     l->pos = v3(0.0f, 4.0f, 4.0f);
     l->color = v3(1.0f, 0.97f, 0.92f);
     l->intensity = 4.0f;
+    a.have_water = 1;
+    a.water.lo = v3(-2.0f, 0.0f, -1.0f);
+    a.water.hi = v3(2.0f, 0.0f, 1.0f);
+    a.water.level = -0.8f;
+    a.water.spacing = 0.5f;
 
     check(level_save(&a, "leveltest.lvl") == 0, "a scene writes to a file");
     check(level_load(&b, "leveltest.lvl") == 0, "a scene reads back");
@@ -58,6 +63,9 @@ static void round_trip(void)
           "a mirrored ball keeps its flag");
     check(b.lights[0].kind == LIGHT_POINT && b.lights[0].intensity == 4.0f,
           "a lamp keeps its kind and power");
+    check(b.have_water && b.water.lo.x == -2.0f && b.water.hi.z == 1.0f &&
+              b.water.level == -0.8f,
+          "a pool keeps its breadth and level");
     (void)remove("leveltest.lvl");
 }
 

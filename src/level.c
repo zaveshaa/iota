@@ -95,6 +95,12 @@ int level_save(const Scene *s, const char *path)
                   (double)s->fog_start, (double)s->fog_range);
     (void)fprintf(f, "sky %06x %06x\n", s->sky_top & 0xffffffu,
                   s->sky_horizon & 0xffffffu);
+    if (s->have_water) {
+        (void)fprintf(f, "water %g %g %g %g %g %g\n", (double)s->water.lo.x,
+                      (double)s->water.lo.z, (double)s->water.hi.x,
+                      (double)s->water.hi.z, (double)s->water.level,
+                      (double)s->water.spacing);
+    }
     for (i = 0; i < s->obj_count; i++) {
         const Obj *o = &s->objs[i];
 
@@ -151,6 +157,12 @@ int level_load(Scene *s, const char *path)
         } else if (strcmp(tok[0], "sky") == 0 && n >= 3) {
             s->sky_top = tx(tok[1]);
             s->sky_horizon = tx(tok[2]);
+        } else if (strcmp(tok[0], "water") == 0 && n >= 7) {
+            s->water.lo = v3(tf(tok[1]), 0.0f, tf(tok[2]));
+            s->water.hi = v3(tf(tok[3]), 0.0f, tf(tok[4]));
+            s->water.level = tf(tok[5]);
+            s->water.spacing = tf(tok[6]);
+            s->have_water = 1;
         } else if (strcmp(tok[0], "obj") == 0 && n >= 13) {
             Obj *o = scene_add_obj(s);
 
