@@ -120,6 +120,33 @@ static void cast_checks(const Scene *s)
           "the wall occludes the floor behind it", detail);
 }
 
+static void yaw_checks(void)
+{
+    Scene s;
+    Obj *o;
+    Hit h;
+
+    scene_clear(&s);
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 0.0f, 0.0f);
+    o->half = v3(2.0f, 1.0f, 0.2f);
+
+    h = cast_ray(&s, NULL, v3(0.0f, 0.0f, 3.0f), v3(0.0f, 0.0f, -1.0f), 100.0f);
+    check(h.action == HIT_CONTINUE && fabsf(h.point.z - 0.2f) < 1e-3f,
+          "a long box is hit on its wide face", NULL);
+
+    o->yaw = 1.57079632679f;
+    h = cast_ray(&s, NULL, v3(0.0f, 0.0f, 3.0f), v3(0.0f, 0.0f, -1.0f), 100.0f);
+    check(h.action == HIT_CONTINUE && fabsf(h.point.z - 2.0f) < 1e-3f,
+          "turned a quarter, the long face meets the front ray", NULL);
+
+    h = cast_ray(&s, NULL, v3(3.0f, 0.0f, 0.0f), v3(-1.0f, 0.0f, 0.0f), 100.0f);
+    check(h.action == HIT_CONTINUE && fabsf(h.point.x - 0.2f) < 1e-3f &&
+              h.normal.x > 0.99f,
+          "turned, its narrow face meets a ray from the side", NULL);
+}
+
 static void tile_checks(void)
 {
     Scene s;
@@ -212,6 +239,7 @@ int main(int argc, char **argv)
     mirror_scene(&scene, &cam);
     cast_checks(&scene);
     tile_checks();
+    yaw_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {

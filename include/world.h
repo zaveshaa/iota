@@ -27,6 +27,7 @@ typedef struct {
     Vec3 pos;
     Vec3 half;
     Vec3 axis;
+    float yaw;
     unsigned ink;
     unsigned flags;
     int mesh;

@@ -39,6 +39,7 @@ static void round_trip(void)
     o->half = v3(0.7f, 0.7f, 0.7f);
     o->ink = RGB(220, 220, 220);
     o->flags = OBJ_MIRROR;
+    o->yaw = 0.785398f;
     l = scene_add_light(&a);
     l->kind = LIGHT_POINT;
     l->pos = v3(0.0f, 4.0f, 4.0f);
@@ -59,8 +60,9 @@ static void round_trip(void)
     check(b.objs[0].kind == OBJ_BOX && b.objs[0].flags == OBJ_TILE &&
               b.objs[0].ink == RGB(96, 100, 116),
           "a tiled box keeps its flag and colour");
-    check(b.objs[1].kind == OBJ_SPHERE && b.objs[1].flags == OBJ_MIRROR,
-          "a mirrored ball keeps its flag");
+    check(b.objs[1].kind == OBJ_SPHERE && b.objs[1].flags == OBJ_MIRROR &&
+              b.objs[1].yaw == 0.785398f,
+          "a mirrored ball keeps its flag and turn");
     check(b.lights[0].kind == LIGHT_POINT && b.lights[0].intensity == 4.0f,
           "a lamp keeps its kind and power");
     check(b.have_water && b.water.lo.x == -2.0f && b.water.hi.z == 1.0f &&

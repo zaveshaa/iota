@@ -68,10 +68,11 @@ level instead, and drops the body at its spawn.
 moves a cursor whose ray picks the surface under it. A tool shapes what a pair
 of clicks builds: a `box` spans two corners in the chosen material, `water`
 floods a rectangle, `stairs` rise from a foot to a top, `spawn` sets where the
-body starts, `light` hangs a lamp, and `erase` takes a panel away. The first
-click drops an anchor, a ghost previews the build as the pointer moves, and
-the second click lays it down. `Ctrl+S` and `Ctrl+O` write and read the level
-as text.
+body starts, `light` hangs a lamp, `paint` turns a block's material over,
+and `erase` takes a panel away. The first click drops an anchor, a ghost
+previews the build as the pointer moves, and the second click lays it down.
+`r` turns the block under the cursor about the vertical. `Ctrl+S` and `Ctrl+O`
+write and read the level as text.
 
 ## Level format
 
@@ -87,8 +88,9 @@ light. Colours are six hex digits, flags are the object's bits.
 | Key | Action |
 | --- | --- |
 | mouse | move the cursor, click to anchor and to build |
-| `1` `2` `3` `4` `5` `6` | tool: box, water, stairs, spawn, light, erase |
+| `1` … `7` | tool: box, water, stairs, spawn, light, paint, erase |
 | `m` | block material: wall, tile, mirror |
+| `r` | turn the block under the cursor an eighth of a turn |
 | right click | cancel the anchor, or take the panel under the cursor |
 | `W` `A` `S` `D` | fly along the view |
 | `space` / `c` | rise and sink |
