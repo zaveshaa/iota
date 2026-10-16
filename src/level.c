@@ -105,11 +105,12 @@ int level_save(const Scene *s, const char *path)
         const Obj *o = &s->objs[i];
 
         (void)fprintf(f,
-                      "obj %s %g %g %g %g %g %g %g %g %g %06x %u %d\n",
+                      "obj %s %g %g %g %g %g %g %g %g %g %06x %u %d %g\n",
                       kind_name(o->kind), (double)o->pos.x, (double)o->pos.y,
                       (double)o->pos.z, (double)o->half.x, (double)o->half.y,
                       (double)o->half.z, (double)o->axis.x, (double)o->axis.y,
-                      (double)o->axis.z, o->ink & 0xffffffu, o->flags, o->mesh);
+                      (double)o->axis.z, o->ink & 0xffffffu, o->flags, o->mesh,
+                      (double)o->yaw);
     }
     for (i = 0; i < s->light_count; i++) {
         const Light *l = &s->lights[i];
@@ -176,6 +177,7 @@ int level_load(Scene *s, const char *path)
             o->ink = tx(tok[11]);
             o->flags = tu(tok[12]);
             o->mesh = n >= 14 ? (int)tu(tok[13]) : -1;
+            o->yaw = n >= 15 ? tf(tok[14]) : 0.0f;
         } else if (strcmp(tok[0], "light") == 0 && n >= 8) {
             Light *l = scene_add_light(s);
 

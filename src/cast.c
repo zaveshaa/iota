@@ -1,61 +1,51 @@
 #include "cast.h"
 
 #include <float.h>
+#include <math.h>
 #include <stddef.h>
 
 #define HIT_EPS 1e-4f
 
-static int ray_sphere(Vec3 o, Vec3 d, Vec3 c, float r, float *t_out)
-{
-    Vec3 oc = v3_sub(o, c);
-    float a = v3_dot(d, d);
-    float b = v3_dot(oc, d);
-    float cc = v3_dot(oc, oc) - r * r;
-    float disc = b * b - a * cc;
-    float t;
-
-    if (disc < 0.0f || a <= 0.0f) {
-        return 0;
-    }
-    t = (-b - sqrtf(disc)) / a;
-    if (t <= HIT_EPS) {
-        t = (-b + sqrtf(disc)) / a;
-    }
-    if (t <= HIT_EPS) {
-        return 0;
-    }
-    *t_out = t;
-    return 1;
-}
-
-static int ray_box(Vec3 o, Vec3 d, Vec3 c, Vec3 half, float *t_out,
+// a box may be turned about the vertical: the ray is spun into the box's own
+// frame for the slab test, and the face normal it finds is spun back out
+static int ray_box(Vec3 o, Vec3 d, Vec3 c, Vec3 half, float yaw, float *t_out,
                    Vec3 *n_out)
 {
     float tmin = -FLT_MAX;
     float tmax = FLT_MAX;
     int entry_axis = 0;
     float entry_sign = 1.0f;
+    float cs = cosf(yaw);
+    float sn = sinf(yaw);
+    Vec3 rel = v3_sub(o, c);
+    float op[3];
+    float dp[3];
+    float hp[3] = {half.x, half.y, half.z};
     int axis;
 
+    op[0] = rel.x * cs - rel.z * sn;
+    op[1] = rel.y;
+    op[2] = rel.x * sn + rel.z * cs;
+    dp[0] = d.x * cs - d.z * sn;
+    dp[1] = d.y;
+    dp[2] = d.x * sn + d.z * cs;
+
     for (axis = 0; axis < 3; axis++) {
-        float oi = axis == 0 ? o.x : (axis == 1 ? o.y : o.z);
-        float di = axis == 0 ? d.x : (axis == 1 ? d.y : d.z);
-        float ci = axis == 0 ? c.x : (axis == 1 ? c.y : c.z);
-        float hi = axis == 0 ? half.x : (axis == 1 ? half.y : half.z);
-        float lo = ci - hi;
-        float up = ci + hi;
+        float oi = op[axis];
+        float di = dp[axis];
+        float hi = hp[axis];
         float t1;
         float t2;
         float swap;
 
         if (di > -1e-9f && di < 1e-9f) {
-            if (oi < lo || oi > up) {
+            if (oi < -hi || oi > hi) {
                 return 0;
             }
             continue;
         }
-        t1 = (lo - oi) / di;
-        t2 = (up - oi) / di;
+        t1 = (-hi - oi) / di;
+        t2 = (hi - oi) / di;
         if (t1 > t2) {
             swap = t1;
             t1 = t2;
@@ -77,9 +67,36 @@ static int ray_box(Vec3 o, Vec3 d, Vec3 c, Vec3 half, float *t_out,
         return 0;
     }
     *t_out = tmin;
-    *n_out = v3(entry_sign * (entry_axis == 0 ? 1.0f : 0.0f),
-                entry_sign * (entry_axis == 1 ? 1.0f : 0.0f),
-                entry_sign * (entry_axis == 2 ? 1.0f : 0.0f));
+    {
+        float nx = entry_sign * (entry_axis == 0 ? 1.0f : 0.0f);
+        float nz = entry_sign * (entry_axis == 2 ? 1.0f : 0.0f);
+
+        *n_out = v3(nx * cs + nz * sn, entry_sign * (entry_axis == 1 ? 1.0f : 0.0f),
+                    -nx * sn + nz * cs);
+    }
+    return 1;
+}
+
+static int ray_sphere(Vec3 o, Vec3 d, Vec3 c, float r, float *t_out)
+{
+    Vec3 oc = v3_sub(o, c);
+    float a = v3_dot(d, d);
+    float b = v3_dot(oc, d);
+    float cc = v3_dot(oc, oc) - r * r;
+    float disc = b * b - a * cc;
+    float t;
+
+    if (disc < 0.0f || a <= 0.0f) {
+        return 0;
+    }
+    t = (-b - sqrtf(disc)) / a;
+    if (t <= HIT_EPS) {
+        t = (-b + sqrtf(disc)) / a;
+    }
+    if (t <= HIT_EPS) {
+        return 0;
+    }
+    *t_out = t;
     return 1;
 }
 
@@ -126,7 +143,7 @@ Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
                            1.0f / radius);
             }
         } else if (o->kind == OBJ_BOX) {
-            hit = ray_box(origin, dir, o->pos, o->half, &t, &n);
+            hit = ray_box(origin, dir, o->pos, o->half, o->yaw, &t, &n);
         } else if (o->kind == OBJ_MESH) {
             // the triangles live at the origin, so the ray is pulled back to the
             // object's own frame and the hit distance is the world's already

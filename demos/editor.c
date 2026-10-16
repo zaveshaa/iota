@@ -25,12 +25,13 @@ typedef enum {
     TOOL_STAIRS,
     TOOL_SPAWN,
     TOOL_LIGHT,
+    TOOL_PAINT,
     TOOL_ERASE,
     TOOL_COUNT
 } Tool;
 
 static const char *const TOOL_NAME[TOOL_COUNT] = {
-    "box", "water", "stairs", "spawn", "light", "erase"
+    "box", "water", "stairs", "spawn", "light", "paint", "erase"
 };
 
 static const char *const TOOL_HINT[TOOL_COUNT] = {
@@ -39,6 +40,7 @@ static const char *const TOOL_HINT[TOOL_COUNT] = {
     "click the foot, then the top",
     "click where the body starts",
     "click where a lamp hangs",
+    "click a block to turn its material over",
     "click a panel to take it away"
 };
 
@@ -216,9 +218,12 @@ static void box_corners(Vec3 a, Vec3 b, Vec3 *c, Vec3 *h)
             fabsf(a.z - b.z) * 0.5f);
 }
 
-static void draw_box_edges(App *a, Vec3 c, Vec3 h, Vec3 pad, unsigned ink)
+static void draw_box_edges(App *a, Vec3 c, Vec3 h, Vec3 pad, float yaw,
+                           unsigned ink)
 {
     Vec3 p[8];
+    float cs = cosf(yaw);
+    float sn = sinf(yaw);
     int sx;
     int sy;
     int sz;
@@ -231,9 +236,12 @@ static void draw_box_edges(App *a, Vec3 c, Vec3 h, Vec3 pad, unsigned ink)
     for (sz = -1; sz <= 1; sz += 2) {
         for (sy = -1; sy <= 1; sy += 2) {
             for (sx = -1; sx <= 1; sx += 2) {
-                p[i] = v3(c.x + (h.x + pad.x) * (float)sx,
+                float ox = (h.x + pad.x) * (float)sx;
+                float oz = (h.z + pad.z) * (float)sz;
+
+                p[i] = v3(c.x + ox * cs + oz * sn,
                           c.y + (h.y + pad.y) * (float)sy,
-                          c.z + (h.z + pad.z) * (float)sz);
+                          c.z - ox * sn + oz * cs);
                 i++;
             }
         }
@@ -365,6 +373,51 @@ static void place_light(App *a, Vec3 p)
     say(a, "hung a lamp");
 }
 
+static void cycle_material(Obj *o)
+{
+    if ((o->flags & OBJ_MIRROR) != 0u) {
+        o->flags = 0u;
+        o->ink = MATS[0].ink;
+    } else if ((o->flags & OBJ_TILE) != 0u) {
+        o->flags = OBJ_MIRROR;
+        o->ink = MATS[2].ink;
+    } else {
+        o->flags = OBJ_TILE;
+        o->ink = MATS[1].ink;
+    }
+}
+
+static void paint_under(App *a, const Obj *obj)
+{
+    const char *name;
+
+    if (obj == NULL) {
+        say(a, "nothing under the cursor");
+        return;
+    }
+    cycle_material((Obj *)obj);
+    name = (obj->flags & OBJ_MIRROR) != 0u ? MATS[2].name
+           : (obj->flags & OBJ_TILE) != 0u ? MATS[1].name
+                                           : MATS[0].name;
+    (void)snprintf(a->msg, sizeof a->msg, "now a %s block", name);
+}
+
+static void rotate_under(App *a)
+{
+    const Obj *obj = NULL;
+
+    (void)cursor_point(a, &obj, NULL);
+    if (obj == NULL) {
+        say(a, "nothing under the cursor");
+        return;
+    }
+    ((Obj *)obj)->yaw += 0.785398163f;
+    if (((Obj *)obj)->yaw > 6.283185307f) {
+        ((Obj *)obj)->yaw -= 6.283185307f;
+    }
+    say(a, "turned an eighth of a turn");
+}
+
 static void erase_under(App *a, const Obj *obj)
 {
     int idx;
@@ -396,6 +449,9 @@ static void click(App *a)
         return;
     case TOOL_LIGHT:
         place_light(a, p);
+        return;
+    case TOOL_PAINT:
+        paint_under(a, obj);
         return;
     case TOOL_ERASE:
         erase_under(a, obj);
@@ -505,10 +561,14 @@ static void app_poll(Engine *e)
         case '4':
         case '5':
         case '6':
+        case '7':
             a->tool = (Tool)(lc - '1');
             a->anchor_set = 0;
             (void)snprintf(a->msg, sizeof a->msg, "%s: %s", TOOL_NAME[a->tool],
                            TOOL_HINT[a->tool]);
+            break;
+        case 'r':
+            rotate_under(a);
             break;
         case 'm':
             a->mat = (a->mat + 1) % MAT_COUNT;
@@ -614,13 +674,13 @@ static void draw_ghost(App *a)
     if (a->tool == TOOL_ERASE) {
         if (obj != NULL) {
             draw_box_edges(a, obj->pos, obj->half, v3(0.04f, 0.04f, 0.04f),
-                           RGB(255, 110, 110));
+                           obj->yaw, RGB(255, 110, 110));
         }
         return;
     }
     if (a->tool == TOOL_SPAWN) {
         draw_box_edges(a, v3(p.x, p.y + 0.2f, p.z), v3(0.3f, 0.2f, 0.3f),
-                       v3(0.0f, 0.0f, 0.0f), RGB(120, 240, 140));
+                       v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(120, 240, 140));
         line3(a, p, v3(p.x, p.y + 1.4f, p.z), (unsigned char)'|',
               RGB(120, 240, 140));
         return;
@@ -637,19 +697,19 @@ static void draw_ghost(App *a)
 
     if (!a->anchor_set) {
         draw_box_edges(a, p, v3(0.12f, 0.12f, 0.12f), v3(0.0f, 0.0f, 0.0f),
-                       RGB(255, 236, 140));
+                       0.0f, RGB(255, 236, 140));
         return;
     }
 
     draw_box_edges(a, a->anchor, v3(0.1f, 0.1f, 0.1f), v3(0.0f, 0.0f, 0.0f),
-                   RGB(120, 220, 255));
+                   0.0f, RGB(120, 220, 255));
 
     if (a->tool == TOOL_BOX) {
         Vec3 c;
         Vec3 h;
 
         box_corners(a->anchor, p, &c, &h);
-        draw_box_edges(a, c, h, v3(0.0f, 0.0f, 0.0f), RGB(255, 236, 140));
+        draw_box_edges(a, c, h, v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(255, 236, 140));
     } else if (a->tool == TOOL_STAIRS) {
         line3(a, a->anchor, p, (unsigned char)'#', RGB(255, 220, 120));
     } else if (a->tool == TOOL_WATER) {
@@ -721,8 +781,8 @@ static void app_draw(Engine *e)
     render_text(r, 0, 3, line, RGB(140, 170, 200));
     render_text(r, 0, a->rows - 1,
                 " WASD fly  space/c up-down  click build  rclick cancel/take"
-                "  1-6 tool  m material  g snap  u undo  Ctrl+S/O save load"
-                "  n new  Esc quit",
+                "  1-7 tool  m material  r turn  g snap  u undo"
+                "  Ctrl+S/O save load  n new  Esc quit",
                 RGB(96, 132, 160));
 }
 
