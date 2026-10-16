@@ -26,8 +26,10 @@ WATER_TEST ?= watertest
 WATER_TEST_SRC = src/water.c tests/watertest.c
 LEVEL_TEST ?= leveltest
 LEVEL_TEST_SRC = src/level.c src/world.c tests/leveltest.c
+UI_TEST   ?= uitest
+UI_TEST_SRC = src/render.c src/ui.c tests/uitest.c
 EDITOR     ?= editor
-EDITOR_SRC = $(CORE) demos/editor.c
+EDITOR_SRC = $(CORE) src/ui.c demos/editor.c
 HDR       = $(wildcard include/*.h)
 GOLDEN    = tests/golden/mirror.txt
 
@@ -54,15 +56,20 @@ $(WATER_TEST): $(WATER_TEST_SRC) $(HDR)
 $(LEVEL_TEST): $(LEVEL_TEST_SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(LEVEL_TEST_SRC) $(LDFLAGS)
 
+$(UI_TEST): $(UI_TEST_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(UI_TEST_SRC) $(LDFLAGS)
+
 $(EDITOR): $(EDITOR_SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(EDITOR_SRC) $(LDFLAGS)
 
-test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST) $(LEVEL_TEST)
+test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST) $(LEVEL_TEST) \
+      $(UI_TEST)
 	./$(TEST_BIN) $(GOLDEN)
 	./$(WALK_TEST)
 	./$(MESH_TEST)
 	./$(WATER_TEST)
 	./$(LEVEL_TEST)
+	./$(UI_TEST)
 
 regen: $(TEST_BIN)
 	./$(TEST_BIN) --write $(GOLDEN)
@@ -91,6 +98,6 @@ help:
 
 clean:
 	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST) \
-	      $(LEVEL_TEST) $(EDITOR)
+	      $(LEVEL_TEST) $(UI_TEST) $(EDITOR)
 
 .PHONY: all test regen run edit install help clean

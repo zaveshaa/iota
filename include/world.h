@@ -3,11 +3,8 @@
 
 #include "light.h"
 #include "mesh.h"
+#include "render.h"
 #include "vec3.h"
-
-#define RGB(r, g, b)                                                       \
-    ((((unsigned)(r) & 0xffu) << 16) | (((unsigned)(g) & 0xffu) << 8) |   \
-     ((unsigned)(b) & 0xffu))
 
 typedef enum {
     OBJ_BOX,
