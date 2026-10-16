@@ -320,7 +320,7 @@ static void app_draw(Engine *e)
     render_text(r, 1, 0, line, RGB(120, 230, 140));
     (void)snprintf(line, sizeof line,
                    " WASD walk  arrows look  space jump  Tab map  Esc quit"
-                   "   [%s]",
+                   "   [%.100s]",
                    a->label);
     render_text(r, 1, 1, line, RGB(96, 132, 160));
 }
