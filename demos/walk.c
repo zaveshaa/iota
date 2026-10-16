@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "input.h"
+#include "level.h"
 #include "view.h"
 #include "walk.h"
 #include "water.h"
@@ -241,25 +242,29 @@ static void app_draw(Engine *e)
                 RGB(96, 132, 160));
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     EngineHooks hooks = {app_poll, app_sim, app_draw};
     App a;
     Engine *e;
+    int gem;
 
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
-    build_range(&a.scene, mesh_load(&a.meshes, "assets/gem.obj"));
-    water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
-               -0.8f, 0.5f);
-    water_spout(&a.water, v3(10.0f, 2.2f, -3.0f), 1.1f);
+    gem = mesh_load(&a.meshes, "assets/gem.obj");
+    if (argc < 2 || level_load(&a.scene, argv[1]) != 0) {
+        build_range(&a.scene, gem);
+        water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
+                   -0.8f, 0.5f);
+        water_spout(&a.water, v3(10.0f, 2.2f, -3.0f), 1.1f);
+    }
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
     a.player.height = 1.7f;
     a.player.step = 0.42f;
-    a.player.pos = v3(0.0f, 0.0f, -3.0f);
-    a.cam.pos = v3(0.0f, EYE, -3.0f);
+    a.player.pos = a.scene.have_spawn ? a.scene.spawn : v3(0.0f, 0.0f, -3.0f);
+    a.cam.pos = v3(a.player.pos.x, a.player.pos.y + EYE, a.player.pos.z);
     e = engine_open(&hooks, &a);
     if (e == NULL) {
         (void)fprintf(stderr, "iota: no terminal to draw in\n");

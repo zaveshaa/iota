@@ -46,6 +46,8 @@ typedef struct {
     float fog_range;
     unsigned sky_top;
     unsigned sky_horizon;
+    Vec3 spawn;
+    int have_spawn;
 } Scene;
 
 void scene_clear(Scene *s);
