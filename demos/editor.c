@@ -10,6 +10,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define FLY_SPEED 9.0f
@@ -25,6 +26,7 @@
 
 typedef enum {
     TOOL_BOX,
+    TOOL_WALL,
     TOOL_WATER,
     TOOL_STAIRS,
     TOOL_TUNNEL,
@@ -37,13 +39,18 @@ typedef enum {
     TOOL_COUNT
 } Tool;
 
+// the first ten tools answer to the number row, 1 .. 9 then 0; the rest are a
+// tab or a panel click away
+#define TOOL_KEYS 10
+
 static const char *const TOOL_NAME[TOOL_COUNT] = {
-    "box",   "water", "stairs", "tunnel", "pit",
-    "spawn", "light", "select", "paint",  "erase"
+    "box",   "wall",  "water", "stairs", "tunnel", "pit",
+    "spawn", "light", "select", "paint", "erase"
 };
 
 static const char *const TOOL_HINT[TOOL_COUNT] = {
     "two corners make a solid",
+    "the near end, then the far end",
     "corner a pool, then the far corner",
     "the foot, then the top",
     "corner a bore, then the far corner",
@@ -69,8 +76,15 @@ static const Material MATS[] = {
 
 #define MAT_COUNT ((int)(sizeof MATS / sizeof MATS[0]))
 
+#define HIST_MAX 128
+
 typedef struct {
     Scene scene;
+    Scene scratch;
+    Scene *hist;
+    int hist_cap;
+    int hist_len;
+    int hist_pos;
     Meshes meshes;
     Water water;
     Camera cam;
@@ -99,6 +113,7 @@ typedef struct {
     float riser;
     float stair_w;
     float wall;
+    float wall_h;
     float depth;
     float lamp_i;
     float res;
@@ -329,6 +344,76 @@ static void water_apply(App *a)
     }
 }
 
+// The whole scene is a few kilobytes, so history keeps plain copies of it: a
+// frame that changed anything banks the new scene and a later undo swaps an old
+// one back. Each frame starts with a scratch copy and only banks when the two
+// differ, so a click that builds nothing leaves no dead step behind.
+static void hist_init(App *a)
+{
+    a->hist = malloc(sizeof(Scene) * HIST_MAX);
+    a->hist_cap = a->hist ? HIST_MAX : 0;
+    a->hist_len = 0;
+    a->hist_pos = -1;
+    if (a->hist != NULL) {
+        a->hist[0] = a->scene;
+        a->hist_len = 1;
+        a->hist_pos = 0;
+    }
+}
+
+static void hist_commit(App *a)
+{
+    if (a->hist == NULL) {
+        return;
+    }
+    a->hist_len = a->hist_pos + 1;
+    if (a->hist_len >= a->hist_cap) {
+        memmove(a->hist, a->hist + 1, sizeof(Scene) * (size_t)(a->hist_cap - 1));
+        a->hist_len = a->hist_cap - 1;
+        a->hist_pos = a->hist_len - 1;
+    }
+    a->hist[a->hist_len] = a->scene;
+    a->hist_len++;
+    a->hist_pos = a->hist_len - 1;
+}
+
+static void hist_settle(App *a)
+{
+    if (a->hist != NULL && memcmp(&a->scratch, &a->scene, sizeof(Scene)) != 0) {
+        hist_commit(a);
+    }
+}
+
+static void hist_show(App *a, int pos, const char *word)
+{
+    a->scene = a->hist[pos];
+    a->scratch = a->scene;
+    a->hist_pos = pos;
+    a->sel = -1;
+    a->sel_light = -1;
+    ui_edit_stop(&a->ui);
+    water_apply(a);
+    say(a, word);
+}
+
+static void hist_undo(App *a)
+{
+    if (a->hist != NULL && a->hist_pos > 0) {
+        hist_show(a, a->hist_pos - 1, "undone");
+    } else {
+        say(a, "nothing to undo");
+    }
+}
+
+static void hist_redo(App *a)
+{
+    if (a->hist != NULL && a->hist_pos + 1 < a->hist_len) {
+        hist_show(a, a->hist_pos + 1, "redone");
+    } else {
+        say(a, "nothing to redo");
+    }
+}
+
 static Obj *add_box(App *a, Vec3 c, Vec3 h)
 {
     Obj *o = scene_add_obj(&a->scene);
@@ -357,6 +442,31 @@ static void place_box(App *a, Vec3 lo, Vec3 hi)
     }
     (void)snprintf(a->msg, sizeof a->msg, "laid a %s block",
                    MATS[a->mat].name);
+}
+
+static void place_wall(App *a, Vec3 lo, Vec3 hi)
+{
+    float dx = hi.x - lo.x;
+    float dz = hi.z - lo.z;
+    float len = sqrtf(dx * dx + dz * dz);
+    float h = clampf(a->wall_h, MIN_HALF, 64.0f);
+    float th = clampf(a->wall, MIN_HALF, 4.0f);
+    Obj *o;
+
+    if (len < 0.2f) {
+        say(a, "a wall wants a longer run");
+        return;
+    }
+    o = add_box(a, v3((lo.x + hi.x) * 0.5f, lo.y + h * 0.5f,
+                      (lo.z + hi.z) * 0.5f),
+                v3(len * 0.5f, h * 0.5f, th * 0.5f));
+    if (o == NULL) {
+        say(a, "no room left for another wall");
+        return;
+    }
+    o->yaw = atan2f(-dz, dx);
+    (void)snprintf(a->msg, sizeof a->msg, "raised a wall %.1f long, %.1f high",
+                   (double)len, (double)h);
 }
 
 static void place_water(App *a, Vec3 lo, Vec3 hi)
@@ -690,6 +800,8 @@ static void world_click(App *a)
     }
     if (a->tool == TOOL_BOX) {
         place_box(a, a->anchor, p);
+    } else if (a->tool == TOOL_WALL) {
+        place_wall(a, a->anchor, p);
     } else if (a->tool == TOOL_WATER) {
         place_water(a, a->anchor, p);
     } else if (a->tool == TOOL_STAIRS) {
@@ -730,6 +842,7 @@ static void select_tool(App *a, Tool t)
 {
     a->tool = t;
     a->anchor_set = 0;
+    ui_edit_stop(&a->ui);
     (void)snprintf(a->msg, sizeof a->msg, "%s: %s", TOOL_NAME[t], TOOL_HINT[t]);
 }
 
@@ -739,6 +852,7 @@ static void app_poll(Engine *e)
     int k;
 
     refresh_basis(a);
+    a->scratch = a->scene;
     while ((k = term_read_key()) != KEY_NONE) {
         double now = engine_time(e);
         int lc;
@@ -761,6 +875,9 @@ static void app_poll(Engine *e)
             } else {
                 a->btn_down = 0;
             }
+            continue;
+        }
+        if (a->ui.editing != 0 && ui_edit_key(&a->ui, k)) {
             continue;
         }
         lc = lower(k);
@@ -787,6 +904,7 @@ static void app_poll(Engine *e)
                 water_apply(a);
                 a->sel = -1;
                 a->sel_light = -1;
+                ui_edit_stop(&a->ui);
                 (void)snprintf(a->msg, sizeof a->msg, "read %s", a->path);
             } else {
                 say(a, "could not read the level");
@@ -805,7 +923,7 @@ static void app_poll(Engine *e)
         case '8':
         case '9':
         case '0':
-            select_tool(a, (Tool)((lc == '0' ? 9 : lc - '1') % TOOL_COUNT));
+            select_tool(a, (Tool)((lc == '0' ? TOOL_KEYS - 1 : lc - '1') % TOOL_COUNT));
             break;
         case 'r':
             rotate_under(a);
@@ -823,16 +941,16 @@ static void app_poll(Engine *e)
             world_click(a);
             break;
         case 'u':
-            if (a->scene.obj_count > 0) {
-                a->scene.obj_count--;
-                if (a->sel >= a->scene.obj_count) {
-                    a->sel = -1;
-                }
-                say(a, "undone");
-            }
+        case 26:
+            hist_undo(a);
+            break;
+        case 25:
+            hist_redo(a);
             break;
         case 'n':
             app_new(a);
+            a->scratch = a->scene;
+            hist_commit(a);
             say(a, "a fresh level");
             break;
         case 'h':
@@ -953,6 +1071,22 @@ static void draw_ghost(App *a)
 
         box_corners(a->anchor, floor, &c, &h);
         draw_box_edges(a, c, h, v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(255, 170, 120));
+    } else if (a->tool == TOOL_WALL) {
+        float dx = p.x - a->anchor.x;
+        float dz = p.z - a->anchor.z;
+        float len = sqrtf(dx * dx + dz * dz);
+        float h = clampf(a->wall_h, MIN_HALF, 64.0f);
+        float th = clampf(a->wall, MIN_HALF, 4.0f);
+
+        line3(a, a->anchor, p, (unsigned char)'#', RGB(200, 220, 255));
+        if (len > 0.001f) {
+            draw_box_edges(a, v3((a->anchor.x + p.x) * 0.5f,
+                                 a->anchor.y + h * 0.5f,
+                                 (a->anchor.z + p.z) * 0.5f),
+                           v3(len * 0.5f, h * 0.5f, th * 0.5f),
+                           v3(0.0f, 0.0f, 0.0f), atan2f(-dz, dx),
+                           RGB(200, 220, 255));
+        }
     } else if (a->tool == TOOL_STAIRS) {
         line3(a, a->anchor, p, (unsigned char)'#', RGB(255, 220, 120));
     } else if (a->tool == TOOL_WATER) {
@@ -999,8 +1133,10 @@ static void draw_panel(App *a)
     ui_label(ui, c, r++, "tool", RGB(214, 232, 255));
     for (i = 0; i < TOOL_COUNT; i++) {
         char tag[24];
+        char key = i < TOOL_KEYS - 1 ? (char)('1' + i)
+                 : i == TOOL_KEYS - 1 ? '0' : ' ';
 
-        (void)snprintf(tag, sizeof tag, "%d %s", i + 1, TOOL_NAME[i]);
+        (void)snprintf(tag, sizeof tag, "%c %s", key, TOOL_NAME[i]);
         if (ui_button(ui, 100 + i, c, r++, tag)) {
             select_tool(a, (Tool)i);
         }
@@ -1027,6 +1163,8 @@ static void draw_panel(App *a)
                   6.0f, 1);
     (void)ui_step(ui, 303, c, r++, w - 4, "wall", &a->wall, 0.05f, 0.05f, 2.0f,
                   2);
+    (void)ui_step(ui, 309, c, r++, w - 4, "wallH", &a->wall_h, 0.5f, 0.1f,
+                  64.0f, 1);
     (void)ui_step(ui, 304, c, r++, w - 4, "depth", &a->depth, 0.5f, 0.5f, 64.0f,
                   1);
     (void)ui_step(ui, 305, c, r++, w - 4, "lamp", &a->lamp_i, 0.5f, 0.5f, 12.0f,
@@ -1053,6 +1191,8 @@ static void draw_panel(App *a)
                       32.0f, 1);
         (void)ui_step(ui, 405, c, r++, w - 4, "sz", &o->half.z, 0.1f, 0.05f,
                       32.0f, 1);
+        (void)ui_step(ui, 409, c, r++, w - 4, "yaw", &o->yaw, EIGHTH, 0.0f, TAU,
+                      2);
         if (ui_button(ui, 406, c, r, "turn-")) {
             o->yaw -= EIGHTH;
             if (o->yaw < 0.0f) {
@@ -1108,10 +1248,11 @@ static void draw_help(App *a)
         "click     build the current tool",
         "rclick    cancel the anchor, or take a panel",
         "1..9, 0   switch tool, tab for the next",
+        "click num type a value, enter lands it",
         "m         flip the block material",
         "r         turn the block under the cursor",
         "g         toggle snapping to the half-metre",
-        "u         undo the last panel",
+        "u ctrl+z   undo, ctrl+y redo",
         "n         start a fresh level",
         "ctrl+s    write the level",
         "ctrl+o    read the level back",
@@ -1160,6 +1301,7 @@ static void app_draw(Engine *e)
     render_put(r, a->mx, a->my + 1, (unsigned char)'|', RGB(255, 255, 255));
 
     if (a->click && !a->ui.consumed) {
+        ui_edit_stop(&a->ui);
         world_click(a);
     }
     if (a->rclick && !a->ui.consumed) {
@@ -1175,6 +1317,8 @@ static void app_draw(Engine *e)
     }
     a->click = 0;
     a->rclick = 0;
+    a->ui.edit_commit = 0;
+    hist_settle(a);
 
     {
         char line[160];
@@ -1204,6 +1348,7 @@ int main(int argc, char **argv)
     a.riser = 0.25f;
     a.stair_w = 1.6f;
     a.wall = 0.25f;
+    a.wall_h = 3.0f;
     a.depth = 2.0f;
     a.lamp_i = 4.0f;
     a.res = 0.0f;
@@ -1220,6 +1365,8 @@ int main(int argc, char **argv)
     } else {
         water_apply(&a);
     }
+    a.scratch = a.scene;
+    hist_init(&a);
     e = engine_open(&hooks, &a);
     if (e == NULL) {
         (void)fprintf(stderr, "iota: no terminal to draw in\n");

@@ -1,6 +1,7 @@
 #include "ui.h"
 
 #include <stdio.h>
+#include <string.h>
 
 static int g_checks;
 static int g_failures;
@@ -19,7 +20,7 @@ static void check(int ok, const char *name)
 static void button_under_pointer(void)
 {
     Render *r = render_open(40, 10);
-    Ui ui;
+    Ui ui = {0};
     int hit;
 
     ui_begin(&ui, r, 2, 3, 1, 1, 0);
@@ -34,7 +35,7 @@ static void button_under_pointer(void)
 static void button_away_from_pointer(void)
 {
     Render *r = render_open(40, 10);
-    Ui ui;
+    Ui ui = {0};
     int hit;
 
     ui_begin(&ui, r, 2, 3, 1, 1, 0);
@@ -48,7 +49,7 @@ static void button_away_from_pointer(void)
 static void panel_claims_its_ground(void)
 {
     Render *r = render_open(40, 10);
-    Ui ui;
+    Ui ui = {0};
 
     ui_begin(&ui, r, 5, 5, 0, 0, 0);
     ui_panel(&ui, 0, 0, 20, 8, "panel");
@@ -65,7 +66,7 @@ static void panel_claims_its_ground(void)
 static void stepper_steps_and_clamps(void)
 {
     Render *r = render_open(40, 10);
-    Ui ui;
+    Ui ui = {0};
     float v = 1.0f;
     int changed;
 
@@ -83,10 +84,47 @@ static void stepper_steps_and_clamps(void)
     render_close(r);
 }
 
+static void typing_lands_a_value(void)
+{
+    Render *r = render_open(40, 10);
+    Ui ui = {0};
+    float v = 1.0f;
+    const char *keys = "2.75";
+
+    ui_begin(&ui, r, 10, 2, 1, 1, 0);
+    (void)ui_step(&ui, 9, 1, 2, 30, "size", &v, 0.5f, 0.0f, 10.0f, 1);
+    ui_end(&ui);
+    check(ui.editing == 9, "a click on the number opens an edit");
+
+    ui_begin(&ui, r, 10, 2, 0, 0, 0);
+    while (*keys != '\0') {
+        (void)ui_edit_key(&ui, (unsigned char)*keys);
+        keys++;
+    }
+    (void)ui_edit_key(&ui, 13);
+    (void)ui_step(&ui, 9, 1, 2, 30, "size", &v, 0.5f, 0.0f, 10.0f, 1);
+    ui_end(&ui);
+    check(v > 2.74f && v < 2.76f, "the typed number is written on enter");
+    check(ui.editing == 0, "the edit closes once it lands");
+
+    v = 1.0f;
+    ui_begin(&ui, r, 10, 2, 1, 1, 0);
+    (void)ui_step(&ui, 9, 1, 2, 30, "size", &v, 0.5f, 0.0f, 10.0f, 1);
+    ui_end(&ui);
+    ui_begin(&ui, r, 10, 2, 0, 0, 0);
+    (void)ui_edit_key(&ui, '9');
+    (void)ui_edit_key(&ui, '9');
+    (void)ui_edit_key(&ui, 27);
+    (void)ui_step(&ui, 9, 1, 2, 30, "size", &v, 0.5f, 0.0f, 10.0f, 1);
+    ui_end(&ui);
+    check(v == 1.0f && ui.editing == 0, "escape drops the edit untouched");
+    render_close(r);
+}
+
 static void toggle_flips(void)
 {
     Render *r = render_open(40, 10);
-    Ui ui;
+    Ui ui = {0};
     int on = 0;
     int changed;
 
@@ -103,6 +141,7 @@ int main(void)
     button_away_from_pointer();
     panel_claims_its_ground();
     stepper_steps_and_clamps();
+    typing_lands_a_value();
     toggle_flips();
     (void)printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures != 0;

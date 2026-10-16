@@ -70,17 +70,20 @@ set that redraws itself every frame the way Dear ImGui does; a click on the
 panel is swallowed there and never reaches the world. The camera flies free and
 the pointer moves a cursor whose ray picks the surface under it. A tool shapes
 what a pair of clicks builds: a `box` spans two corners in the chosen material,
-`water` floods a rectangle, `stairs` rise from a foot to a top, `tunnel` bores a
-roofed, open-ended corridor, `pit` sinks an open-topped basin of the set depth,
-`spawn` sets where the body starts, `light` hangs a lamp, `paint` turns a
-block's material over, and `erase` takes a panel away. The `select` tool picks a
-panel or a lamp and the panel then edits its position, size and power. The first
-click drops an anchor, a ghost previews the build as the pointer moves, and the
-second click lays it down. A ground grid with coloured axes can be turned on to
-line the walls up. `r` turns the block under the cursor about the vertical. The
-`res` stepper sets how many rays each cell gathers, from one up to four, or
-leaves it to the frame budget on auto. `Ctrl+S` and `Ctrl+O` write and read the
-level as text.
+`wall` raises a straight run to the height the panel sets, `water` floods a
+rectangle, `stairs` rise from a foot to a top, `tunnel` bores a roofed,
+open-ended corridor, `pit` sinks an open-topped basin of the set depth, `spawn`
+sets where the body starts, `light` hangs a lamp, `paint` turns a block's
+material over, and `erase` takes a panel away. The `select` tool picks a panel
+or a lamp and the panel then edits its position, size, turn and, for a lamp, its
+power. The first click drops an anchor, a ghost previews the build as the
+pointer moves, and the second click lays it down. A ground grid with coloured
+axes can be turned on to line the walls up. `r` turns the block under the cursor
+about the vertical. Any number on the panel can be clicked and typed straight
+in, landed with Enter. Every change is remembered, so `u` or `Ctrl+Z` steps back
+and `Ctrl+Y` steps forward again. The `res` stepper sets how many rays each cell
+gathers, from one up to four, or leaves it to the frame budget on auto. `Ctrl+S`
+and `Ctrl+O` write and read the level as text.
 
 ## Level format
 
@@ -97,10 +100,11 @@ bits.
 | Key | Action |
 | --- | --- |
 | mouse | move the cursor, click to anchor and to build; the panel takes its own clicks |
-| `1` … `9`, `0` | tool: box, water, stairs, tunnel, pit, spawn, light, select, paint, erase |
-| `Tab` | cycle to the next tool |
+| `1` … `9`, `0` | tool: box, wall, water, stairs, tunnel, pit, spawn, light, select, paint |
+| `Tab` | cycle to the next tool, including `erase` past the tenth |
 | `m` | block material: wall, tile, mirror |
 | `r` | turn the block under the cursor an eighth of a turn |
+| click a number | type the value in, Enter lands it, Escape drops it |
 | right click | cancel the anchor, or take the panel under the cursor |
 | `W` `A` `S` `D` | fly along the view |
 | `space` / `c` | rise and sink |
@@ -108,13 +112,15 @@ bits.
 | `g` | toggle grid snapping |
 | `h` | show the key list |
 | `p` | set the spawn at the cursor |
-| `u` | undo, `n` new, `Ctrl+S` save, `Ctrl+O` load |
+| `u` / `Ctrl+Z` | undo, `Ctrl+Y` redo |
+| `n` | new, `Ctrl+S` save, `Ctrl+O` load |
 | `Esc` | cancel the anchor, or quit |
 
 The panel carries the tool and material buttons, steppers for the stair riser,
-stair width, tunnel and pit wall thickness, the pit depth, the new lamp's power
-and the render resolution, toggles for the snapping and the ground grid, and the
-properties of whatever the `select` tool last picked.
+stair width, wall thickness and height, the pit depth, the new lamp's power and
+the render resolution, toggles for the snapping and the ground grid, and the
+properties of whatever the `select` tool last picked. A stepper's number opens an
+edit when clicked, so an exact value can be typed rather than nudged.
 
 ## Controls
 

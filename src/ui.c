@@ -1,6 +1,7 @@
 #include "ui.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define UI_BG     RGB(12, 14, 22)
@@ -125,30 +126,104 @@ int ui_toggle(Ui *ui, int id, int x, int y, const char *label, int *value)
     return changed;
 }
 
+int ui_edit_key(Ui *ui, int key)
+{
+    if (ui->editing == 0) {
+        return 0;
+    }
+    if (key == 13 || key == 10) {
+        ui->edit_commit = 1;
+        return 1;
+    }
+    if (key == 27) {
+        ui->editing = 0;
+        ui->edit_len = 0;
+        ui->edit_fresh = 0;
+        ui->edit_buf[0] = '\0';
+        return 1;
+    }
+    if (ui->edit_fresh != 0) {
+        ui->edit_len = 0;
+        ui->edit_buf[0] = '\0';
+        ui->edit_fresh = 0;
+    }
+    if (key == 127 || key == 8) {
+        if (ui->edit_len > 0) {
+            ui->edit_len--;
+            ui->edit_buf[ui->edit_len] = '\0';
+        }
+        return 1;
+    }
+    if (key >= 32 && key < 127) {
+        if (ui->edit_len < (int)sizeof(ui->edit_buf) - 1) {
+            ui->edit_buf[ui->edit_len++] = (char)key;
+            ui->edit_buf[ui->edit_len] = '\0';
+        }
+    }
+    return 1;
+}
+
+void ui_edit_stop(Ui *ui)
+{
+    ui->editing = 0;
+    ui->edit_len = 0;
+    ui->edit_fresh = 0;
+    ui->edit_commit = 0;
+    ui->edit_buf[0] = '\0';
+}
+
 int ui_step(Ui *ui, int id, int x, int y, int w, const char *label,
             float *value, float step, float lo, float hi, int prec)
 {
     int lw = (int)strlen(label);
     int mxs = x + lw + 1;
     int pxs = x + w - 1;
-    int overm = ui_inside(ui, mxs, y, 1, 1);
-    int overp = ui_inside(ui, pxs, y, 1, 1);
-    unsigned im = overm ? UI_HOT : UI_BTN;
-    unsigned ip = overp ? UI_HOT : UI_BTN;
-    char buf[24];
+    int vxs = mxs + 2;
+    int overm;
+    int overp;
+    unsigned im;
+    unsigned ip;
+    char buf[28];
     int changed = 0;
 
     if (ui_inside(ui, x, y, w, 1)) {
         ui->consumed = 1;
     }
+    ui_label(ui, x, y, label, UI_TEXT);
+
+    if (ui->editing == id) {
+        render_put(ui->r, mxs, y, (unsigned char)'-', UI_BTN);
+        render_put(ui->r, pxs, y, (unsigned char)'+', UI_BTN);
+        (void)snprintf(buf, sizeof buf, "%s_", ui->edit_buf);
+        render_text(ui->r, vxs, y, buf, UI_HOT);
+        if (ui->edit_commit != 0) {
+            float nv = ui_clamp((float)strtod(ui->edit_buf, NULL), lo, hi);
+
+            if (nv != *value) {
+                *value = nv;
+                changed = 1;
+            }
+            ui->editing = 0;
+            ui->edit_len = 0;
+            ui->edit_fresh = 0;
+            ui->edit_commit = 0;
+            ui->edit_buf[0] = '\0';
+        }
+        return changed;
+    }
+
+    overm = ui_inside(ui, mxs, y, 1, 1);
+    overp = ui_inside(ui, pxs, y, 1, 1);
+    im = overm ? UI_HOT : UI_BTN;
+    ip = overp ? UI_HOT : UI_BTN;
     if (overm || overp) {
         ui->hot = id;
     }
-    ui_label(ui, x, y, label, UI_TEXT);
     render_put(ui->r, mxs, y, (unsigned char)'-', im);
     render_put(ui->r, pxs, y, (unsigned char)'+', ip);
     (void)snprintf(buf, sizeof buf, "%.*f", prec, (double)*value);
-    render_text(ui->r, mxs + 2, y, buf, overm || overp ? UI_HOT : UI_TEXT);
+    render_text(ui->r, vxs, y, buf, overm || overp ? UI_HOT : UI_TEXT);
+
     if (overm && ui->click) {
         float nv = ui_clamp(*value - step, lo, hi);
 
@@ -163,6 +238,13 @@ int ui_step(Ui *ui, int id, int x, int y, int w, const char *label,
             *value = nv;
             changed = 1;
         }
+    } else if (ui->click && ui_inside(ui, vxs, y, pxs - vxs, 1)) {
+        ui->editing = id;
+        (void)snprintf(ui->edit_buf, sizeof ui->edit_buf, "%.*f", prec,
+                       (double)*value);
+        ui->edit_len = (int)strlen(ui->edit_buf);
+        ui->edit_fresh = 1;
+        ui->edit_commit = 0;
     }
     return changed;
 }
