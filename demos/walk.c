@@ -6,8 +6,10 @@
 #include "water.h"
 #include "world.h"
 
+#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define EYE 1.6f
@@ -15,6 +17,8 @@
 #define TURN_SPEED 2.0f
 #define PITCH_SPEED 1.3f
 #define PITCH_MAX 1.4f
+#define MAP_MAX 64
+#define MAP_NAME 256
 
 typedef struct {
     Scene scene;
@@ -29,6 +33,11 @@ typedef struct {
     float prev_yaw;
     float prev_pitch;
     float source_acc;
+    int gem;
+    char maps[MAP_MAX][MAP_NAME];
+    int map_count;
+    int cur;
+    char label[MAP_NAME];
 } App;
 
 static float lerpf(float a, float b, float t)
@@ -129,6 +138,74 @@ static void build_range(Scene *s, int gem)
     }
 }
 
+static int cmp_map(const void *x, const void *y)
+{
+    return strcmp((const char *)x, (const char *)y);
+}
+
+// the levels in the working directory, so Tab can walk from one to the next
+static int scan_maps(char maps[MAP_MAX][MAP_NAME])
+{
+    DIR *d = opendir(".");
+    struct dirent *de;
+    int n = 0;
+
+    if (d == NULL) {
+        return 0;
+    }
+    while ((de = readdir(d)) != NULL && n < MAP_MAX) {
+        size_t len = strlen(de->d_name);
+
+        if (de->d_name[0] == '.' || len < 4 || len >= (size_t)MAP_NAME) {
+            continue;
+        }
+        if (strcmp(de->d_name + len - 4, ".lvl") != 0) {
+            continue;
+        }
+        (void)snprintf(maps[n], MAP_NAME, "%s", de->d_name);
+        n++;
+    }
+    closedir(d);
+    qsort(maps, (size_t)n, MAP_NAME, cmp_map);
+    return n;
+}
+
+// slot 0 is the built-in range, slot k is maps[k-1]; the body restarts at the
+// map's spawn and whatever water it holds replaces the last pool
+static void load_slot(App *a, int slot)
+{
+    a->cur = slot;
+    if (slot <= 0) {
+        build_range(&a->scene, a->gem);
+        water_open(&a->water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
+                   -0.8f, 0.5f);
+        water_spout(&a->water, v3(10.0f, 2.2f, -3.0f), 1.1f);
+        (void)snprintf(a->label, sizeof a->label, "the test range");
+    } else {
+        const char *path = a->maps[slot - 1];
+
+        if (level_load(&a->scene, path) != 0) {
+            (void)snprintf(a->label, sizeof a->label, "%s - cannot read", path);
+            return;
+        }
+        if (a->scene.have_water) {
+            water_open(&a->water, a->scene.water.lo, a->scene.water.hi,
+                       a->scene.water.level, a->scene.water.spacing);
+        } else {
+            water_close(&a->water);
+        }
+        (void)snprintf(a->label, sizeof a->label, "%s", path);
+    }
+    a->player.pos = a->scene.have_spawn ? a->scene.spawn : v3(0.0f, 0.0f, -3.0f);
+    a->player.vel = v3(0.0f, 0.0f, 0.0f);
+    a->player.jump = 0;
+    a->player.coyote = 0.0f;
+    a->prev_pos = a->player.pos;
+    a->cam.pos = v3(a->player.pos.x, a->player.pos.y + EYE, a->player.pos.z);
+    a->prev_yaw = a->cam.yaw;
+    a->prev_pitch = a->cam.pitch;
+}
+
 static void app_poll(Engine *e)
 {
     App *a = engine_user(e);
@@ -148,6 +225,9 @@ static void app_poll(Engine *e)
             if (!term_key_released()) {
                 a->want_jump = 1;
             }
+            break;
+        case 9:
+            load_slot(a, a->cur + 1 > a->map_count ? 0 : a->cur + 1);
             break;
         default:
             break;
@@ -224,7 +304,7 @@ static void app_draw(Engine *e)
     Render *r = engine_render(e);
     Camera view = a->cam;
     float alpha = (float)engine_alpha(e);
-    char line[96];
+    char line[192];
 
     view.pos = v3(lerpf(a->prev_pos.x, a->player.pos.x, alpha),
                   lerpf(a->prev_pos.y, a->player.pos.y, alpha) + EYE,
@@ -238,8 +318,11 @@ static void app_draw(Engine *e)
                    engine_ss(e) == 2 ? " 2x" : "",
                    a->stats.budget_hit ? " BUDGET" : "");
     render_text(r, 1, 0, line, RGB(120, 230, 140));
-    render_text(r, 1, 1, " WASD walk  arrows look  space jump  Esc quit",
-                RGB(96, 132, 160));
+    (void)snprintf(line, sizeof line,
+                   " WASD walk  arrows look  space jump  Tab map  Esc quit"
+                   "   [%s]",
+                   a->label);
+    render_text(r, 1, 1, line, RGB(96, 132, 160));
 }
 
 int main(int argc, char **argv)
@@ -252,22 +335,33 @@ int main(int argc, char **argv)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     gem = mesh_load(&a.meshes, "assets/gem.obj");
-    if (argc < 2 || level_load(&a.scene, argv[1]) != 0) {
-        build_range(&a.scene, gem);
-        water_open(&a.water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
-                   -0.8f, 0.5f);
-        water_spout(&a.water, v3(10.0f, 2.2f, -3.0f), 1.1f);
-    } else if (a.scene.have_water) {
-        water_open(&a.water, a.scene.water.lo, a.scene.water.hi,
-                   a.scene.water.level, a.scene.water.spacing);
-    }
+    a.gem = gem;
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.05f;
     a.player.radius = 0.3f;
     a.player.height = 1.7f;
     a.player.step = 0.42f;
-    a.player.pos = a.scene.have_spawn ? a.scene.spawn : v3(0.0f, 0.0f, -3.0f);
-    a.cam.pos = v3(a.player.pos.x, a.player.pos.y + EYE, a.player.pos.z);
+    a.map_count = scan_maps(a.maps);
+    a.cur = 0;
+    if (argc >= 2) {
+        int i;
+        int slot = -1;
+
+        for (i = 0; i < a.map_count; i++) {
+            if (strcmp(a.maps[i], argv[1]) == 0) {
+                slot = i + 1;
+                break;
+            }
+        }
+        if (slot < 0 && a.map_count < MAP_MAX) {
+            (void)snprintf(a.maps[a.map_count], MAP_NAME, "%s", argv[1]);
+            a.map_count++;
+            slot = a.map_count;
+        }
+        load_slot(&a, slot > 0 ? slot : 0);
+    } else {
+        load_slot(&a, 0);
+    }
     e = engine_open(&hooks, &a);
     if (e == NULL) {
         (void)fprintf(stderr, "iota: no terminal to draw in\n");
