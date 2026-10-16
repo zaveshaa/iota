@@ -61,8 +61,11 @@ was hit.
 onto, is stopped by the wall it cannot, and jumps. The far wall is a mirror,
 so the range reflects back along it. A smoothed-particle pool lies in the
 way of the walk, thrown into splashes as the body steps through it, and the
-body wades slower under the water's drag. `./walk <level>` opens a saved
-level instead, and drops the body at its spawn.
+body wades slower under the water's drag. `./walk <level>` opens a saved level
+instead, and drops the body at its spawn. `Tab` steps to the next `.lvl` in the
+working directory, the body restarting at that map's spawn, and wraps back to
+the built-in range after the last one; the current map sits in the corner of
+the status line.
 
 `./editor [level]` lays out a level. A panel down the left side holds the tools,
 the material and the shape settings, drawn with a small immediate-mode widget
