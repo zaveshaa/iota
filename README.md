@@ -27,8 +27,9 @@ and what to do next: shade it, bounce it off a mirror, or let it go into the
 fog. The terminal, the cell grid, the ray caster, the frame loop and the
 fixed step are the engine's; the scene is the client's.
 
-This repository carries two scenes: a mirror on a wall, and a test range with
-stairs and crates to walk around in. The engine's body is a walking model in
+This repository carries three scenes: a mirror on a wall, a test range with
+stairs and crates to walk around in, and a level editor that flies and places
+panels. The engine's body is a walking model in
 the Quake line — ground friction, air control, a jump and a step it takes
 without being asked. More scenes — portals, shadows, water — follow the same
 shape.
@@ -37,6 +38,7 @@ shape.
 
     make            build iota and walk
     make walk       build the walking test range
+    make edit       build the level editor
     make install    install iota into $(PREFIX)/bin, /usr/local by default
     make clean      remove the build
 
@@ -59,7 +61,39 @@ was hit.
 onto, is stopped by the wall it cannot, and jumps. The far wall is a mirror,
 so the range reflects back along it. A smoothed-particle pool lies in the
 way of the walk, thrown into splashes as the body steps through it, and the
-body wades slower under the water's drag.
+body wades slower under the water's drag. `./walk <level>` opens a saved
+level instead, and drops the body at its spawn.
+
+`./editor [level]` lays out a level. The camera flies free, the pointer picks
+the cell to aim at, and a click sets a panel of the chosen surface on whatever
+the cursor ray hits: plain wall, faint tile, or mirror. `p` marks the green
+spawn the walk starts from, `t` starts a staircase — click its foot and its
+top and the steps are laid between them — and `Ctrl+S` and `Ctrl+O` write and
+read the level as text.
+
+## Level format
+
+A level is text, one directive per line, `#` comments. `iota 1` heads the
+file; `spawn` gives the body's start; `ambient`, `fog` and `sky` carry the
+lighting and the sky colours; `obj` lists a box, sphere, plane or mesh with
+its position, half extents, axis, colour, flags and mesh index; `light` lists
+a point or sun light. Colours are six hex digits, flags are the object's bits.
+
+## Editor controls
+
+| Key | Action |
+| --- | --- |
+| mouse | aim the cursor, click to place a panel |
+| right click / `x` | remove the panel under the cursor |
+| `W` `A` `S` `D` | fly along the view |
+| `space` / `c` | rise and sink |
+| arrow keys | look |
+| `1` `2` `3` | panel: wall, tile, mirror |
+| `[` `]` | panel size, `-` `=` thickness |
+| `t` | staircase from two clicks |
+| `p` | set the spawn |
+| `u` | undo, `n` new, `Ctrl+S` save, `Ctrl+O` load |
+| `Esc` | quit |
 
 ## Controls
 

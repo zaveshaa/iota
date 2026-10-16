@@ -11,7 +11,8 @@ endif
 
 BIN      ?= iota
 CORE      = src/term.c src/render.c src/world.c src/cast.c src/view.c \
-            src/engine.c src/scene.c src/walk.c src/mesh.c src/water.c
+            src/engine.c src/scene.c src/walk.c src/mesh.c src/water.c \
+            src/level.c
 SRC       = $(CORE) demos/mirror.c
 TEST_BIN  ?= golden
 TEST_SRC   = $(CORE) tests/golden.c
@@ -23,6 +24,10 @@ MESH_TEST ?= meshtest
 MESH_TEST_SRC = src/mesh.c tests/meshtest.c
 WATER_TEST ?= watertest
 WATER_TEST_SRC = src/water.c tests/watertest.c
+LEVEL_TEST ?= leveltest
+LEVEL_TEST_SRC = src/level.c src/world.c tests/leveltest.c
+EDITOR     ?= editor
+EDITOR_SRC = $(CORE) demos/editor.c
 HDR       = $(wildcard include/*.h)
 GOLDEN    = tests/golden/mirror.txt
 
@@ -46,17 +51,27 @@ $(MESH_TEST): $(MESH_TEST_SRC) $(HDR)
 $(WATER_TEST): $(WATER_TEST_SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(WATER_TEST_SRC) $(LDFLAGS)
 
-test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST)
+$(LEVEL_TEST): $(LEVEL_TEST_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(LEVEL_TEST_SRC) $(LDFLAGS)
+
+$(EDITOR): $(EDITOR_SRC) $(HDR)
+	$(CC) $(CFLAGS) -o $@ $(EDITOR_SRC) $(LDFLAGS)
+
+test: $(TEST_BIN) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST) $(LEVEL_TEST)
 	./$(TEST_BIN) $(GOLDEN)
 	./$(WALK_TEST)
 	./$(MESH_TEST)
 	./$(WATER_TEST)
+	./$(LEVEL_TEST)
 
 regen: $(TEST_BIN)
 	./$(TEST_BIN) --write $(GOLDEN)
 
 run: $(BIN)
 	./$(BIN)
+
+edit: $(EDITOR)
+	./$(EDITOR)
 
 install: $(BIN)
 	install -d $(DESTDIR)$(PREFIX)/bin
@@ -70,10 +85,12 @@ help:
 	@echo "  make regen      rewrite the golden frame"
 	@echo "  make run        watch a mirror on the wall"
 	@echo "  make walk       walk a test range"
+	@echo "  make edit       lay out a level"
 	@echo "  make install    install into $(DESTDIR)$(PREFIX)/bin"
 	@echo "  make clean      remove the build"
 
 clean:
-	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST)
+	rm -f $(BIN) $(TEST_BIN) $(WALK) $(WALK_TEST) $(MESH_TEST) $(WATER_TEST) \
+	      $(LEVEL_TEST) $(EDITOR)
 
-.PHONY: all test regen run install help clean
+.PHONY: all test regen run edit install help clean

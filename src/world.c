@@ -11,6 +11,8 @@ void scene_clear(Scene *s)
     s->fog_range = 40.0f;
     s->sky_top = RGB(6, 9, 22);
     s->sky_horizon = RGB(56, 72, 118);
+    s->spawn = v3(0.0f, 0.0f, 0.0f);
+    s->have_spawn = 0;
 }
 
 Obj *scene_add_obj(Scene *s)

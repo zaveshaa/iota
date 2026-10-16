@@ -31,8 +31,14 @@ static struct Term g_term;
 
 static int g_kitty;
 static int g_released;
+static int g_mouse_on;
+static int g_mouse_x;
+static int g_mouse_y;
+static int g_mouse_raw;
+static int g_mouse_press;
 
 static void term_write(const char *s, size_t n);
+static void term_puts(const char *s);
 
 int term_keys_released(void)
 {
@@ -42,6 +48,61 @@ int term_keys_released(void)
 int term_key_released(void)
 {
     return g_released;
+}
+
+int term_mouse_x(void)
+{
+    return g_mouse_x;
+}
+
+int term_mouse_y(void)
+{
+    return g_mouse_y;
+}
+
+// the low two bits are the button, but the wheel rides in bit six and its low
+// bit says which way, so the wheel is told apart before the button is read
+int term_mouse_button(void)
+{
+    if ((g_mouse_raw & 64) != 0) {
+        return -1;
+    }
+    return g_mouse_raw & 3;
+}
+
+int term_mouse_wheel(void)
+{
+    if ((g_mouse_raw & 64) == 0) {
+        return 0;
+    }
+    return (g_mouse_raw & 1) != 0 ? 1 : -1;
+}
+
+int term_mouse_press(void)
+{
+    return g_mouse_press;
+}
+
+// any-motion reporting sends a report every time the pointer moves, with bit
+// five set to say it moved rather than a button went down
+int term_mouse_motion(void)
+{
+    return (g_mouse_raw & 32) != 0;
+}
+
+void term_mouse_enable(int on)
+{
+    if (on == g_mouse_on) {
+        return;
+    }
+    g_mouse_on = on;
+    if (on) {
+        // any-motion so the cursor follows the pointer, SGR so the numbers
+        // do not run past 223 columns and the release says which button
+        term_puts("\033[?1000h\033[?1003h\033[?1006h");
+    } else {
+        term_puts("\033[?1006l\033[?1003l\033[?1000l");
+    }
 }
 
 static int poll_byte(char *c, int ms)
@@ -134,6 +195,10 @@ void term_close(void)
         return;
     }
     g_term.open = 0;
+    if (g_mouse_on) {
+        term_puts("\033[?1006l\033[?1003l\033[?1000l");
+        g_mouse_on = 0;
+    }
     if (g_kitty) {
         term_puts(KITTY_CLEAR);
         g_kitty = 0;
@@ -308,6 +373,50 @@ static int kitty_key(char first)
     }
 }
 
+// SGR mouse: CSI < button ; column ; row (M for press, m for release). The
+// numbers are one-based cells, so the zero-based cell the scene wants is one
+// less. The button number carries the wheel in bit six and the modifiers above
+// it, and nothing here reads the modifiers.
+static int sgr_mouse(char first)
+{
+    int vals[3] = {0, 0, 0};
+    int field = 0;
+    int digits = 0;
+    char c = first;
+    char last;
+
+    for (;;) {
+        if (c >= '0' && c <= '9') {
+            if (++digits > 6) {
+                return KEY_NONE;
+            }
+            vals[field] = vals[field] * 10 + (c - '0');
+        } else if (c == ';') {
+            if (++field > 2) {
+                return KEY_NONE;
+            }
+            digits = 0;
+        } else if (c == 'M' || c == 'm') {
+            last = c;
+            break;
+        } else {
+            return KEY_NONE;
+        }
+        if (!poll_byte(&c, SEQ_WAIT_MS)) {
+            return KEY_NONE;
+        }
+    }
+    if (field != 2) {
+        return KEY_NONE;
+    }
+    g_mouse_raw = vals[0];
+    g_mouse_x = vals[1] - 1;
+    g_mouse_y = vals[2] - 1;
+    g_mouse_press = last == 'M';
+    g_released = last == 'm';
+    return KEY_MOUSE;
+}
+
 int term_read_key(void)
 {
     char c;
@@ -328,6 +437,14 @@ int term_read_key(void)
         }
         if (b1 != '[') {
             return KEY_ESC;
+        }
+        if (b2 == '<') {
+            char first;
+
+            if (!poll_byte(&first, SEQ_WAIT_MS)) {
+                return KEY_NONE;
+            }
+            return sgr_mouse(first);
         }
         if (b2 == '?') {
             char d;
