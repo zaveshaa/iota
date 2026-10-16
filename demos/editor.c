@@ -28,6 +28,7 @@ typedef enum {
     TOOL_WATER,
     TOOL_STAIRS,
     TOOL_TUNNEL,
+    TOOL_PIT,
     TOOL_SPAWN,
     TOOL_LIGHT,
     TOOL_SELECT,
@@ -37,8 +38,8 @@ typedef enum {
 } Tool;
 
 static const char *const TOOL_NAME[TOOL_COUNT] = {
-    "box",   "water", "stairs", "tunnel", "spawn",
-    "light", "select", "paint",  "erase"
+    "box",   "water", "stairs", "tunnel", "pit",
+    "spawn", "light", "select", "paint",  "erase"
 };
 
 static const char *const TOOL_HINT[TOOL_COUNT] = {
@@ -46,6 +47,7 @@ static const char *const TOOL_HINT[TOOL_COUNT] = {
     "corner a pool, then the far corner",
     "the foot, then the top",
     "corner a bore, then the far corner",
+    "corner a hole, then the far corner",
     "where the body starts",
     "where a lamp hangs",
     "click a panel or a lamp to pick it",
@@ -97,7 +99,9 @@ typedef struct {
     float riser;
     float stair_w;
     float wall;
+    float depth;
     float lamp_i;
+    float res;
     int click;
     int rclick;
     int btn_down;
@@ -475,6 +479,48 @@ static void place_tunnel(App *a, Vec3 lo, Vec3 hi)
                    (double)(x1 - x0 + z1 - z0));
 }
 
+static void place_pit(App *a, Vec3 lo, Vec3 hi)
+{
+    float x0 = lo.x < hi.x ? lo.x : hi.x;
+    float x1 = lo.x < hi.x ? hi.x : lo.x;
+    float z0 = lo.z < hi.z ? lo.z : hi.z;
+    float z1 = lo.z < hi.z ? hi.z : lo.z;
+    float y_top = lo.y;
+    float w = clampf(a->wall, MIN_HALF, 2.0f);
+    float d = clampf(a->depth, w * 2.0f, 64.0f);
+    float y_bot = y_top - d;
+    float cx = (x0 + x1) * 0.5f;
+    float cz = (z0 + z1) * 0.5f;
+    float hx = (x1 - x0) * 0.5f;
+    float hz = (z1 - z0) * 0.5f;
+    float cy = (y_top + y_bot) * 0.5f;
+    float hy = d * 0.5f;
+    int ok;
+
+    if (hx < 2.0f * w || hz < 2.0f * w) {
+        say(a, "a pit wants a wider mouth than its walls");
+        return;
+    }
+    if (a->scene.obj_count + 5 > SCENE_MAX_OBJS) {
+        say(a, "no room left for the pit");
+        return;
+    }
+    ok = add_box(a, v3(cx, y_bot + w * 0.5f, cz), v3(hx, w * 0.5f, hz)) != NULL;
+    ok = ok && add_box(a, v3(x0 + w * 0.5f, cy, cz),
+                       v3(w * 0.5f, hy, hz)) != NULL;
+    ok = ok && add_box(a, v3(x1 - w * 0.5f, cy, cz),
+                       v3(w * 0.5f, hy, hz)) != NULL;
+    ok = ok && add_box(a, v3(cx, cy, z0 + w * 0.5f),
+                       v3(hx, hy, w * 0.5f)) != NULL;
+    ok = ok && add_box(a, v3(cx, cy, z1 - w * 0.5f),
+                       v3(hx, hy, w * 0.5f)) != NULL;
+    if (!ok) {
+        say(a, "ran out of room partway through");
+        return;
+    }
+    (void)snprintf(a->msg, sizeof a->msg, "sank a pit %.1f deep", (double)d);
+}
+
 static void place_light(App *a, Vec3 p)
 {
     Light *l = scene_add_light(&a->scene);
@@ -650,6 +696,8 @@ static void world_click(App *a)
         place_stairs(a, a->anchor, p);
     } else if (a->tool == TOOL_TUNNEL) {
         place_tunnel(a, a->anchor, p);
+    } else if (a->tool == TOOL_PIT) {
+        place_pit(a, a->anchor, p);
     }
     a->anchor_set = 0;
 }
@@ -756,7 +804,8 @@ static void app_poll(Engine *e)
         case '7':
         case '8':
         case '9':
-            select_tool(a, (Tool)(lc - '1'));
+        case '0':
+            select_tool(a, (Tool)((lc == '0' ? 9 : lc - '1') % TOOL_COUNT));
             break;
         case 'r':
             rotate_under(a);
@@ -897,6 +946,13 @@ static void draw_ghost(App *a)
 
         box_corners(a->anchor, p, &c, &h);
         draw_box_edges(a, c, h, v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(255, 236, 140));
+    } else if (a->tool == TOOL_PIT) {
+        Vec3 c;
+        Vec3 h;
+        Vec3 floor = v3(p.x, a->anchor.y - a->depth, p.z);
+
+        box_corners(a->anchor, floor, &c, &h);
+        draw_box_edges(a, c, h, v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(255, 170, 120));
     } else if (a->tool == TOOL_STAIRS) {
         line3(a, a->anchor, p, (unsigned char)'#', RGB(255, 220, 120));
     } else if (a->tool == TOOL_WATER) {
@@ -971,10 +1027,14 @@ static void draw_panel(App *a)
                   6.0f, 1);
     (void)ui_step(ui, 303, c, r++, w - 4, "wall", &a->wall, 0.05f, 0.05f, 2.0f,
                   2);
-    (void)ui_step(ui, 304, c, r++, w - 4, "lamp", &a->lamp_i, 0.5f, 0.5f, 12.0f,
+    (void)ui_step(ui, 304, c, r++, w - 4, "depth", &a->depth, 0.5f, 0.5f, 64.0f,
                   1);
-    (void)ui_toggle(ui, 305, c, r, "grid", &a->grid);
-    (void)ui_toggle(ui, 306, c + 9, r, "snap", &a->snap);
+    (void)ui_step(ui, 305, c, r++, w - 4, "lamp", &a->lamp_i, 0.5f, 0.5f, 12.0f,
+                  1);
+    (void)ui_step(ui, 306, c, r++, w - 4, "res 0=auto", &a->res, 1.0f, 0.0f,
+                  (float)VIEW_SS_MAX, 0);
+    (void)ui_toggle(ui, 307, c, r, "grid", &a->grid);
+    (void)ui_toggle(ui, 308, c + 9, r, "snap", &a->snap);
     r += 2;
 
     if (a->sel >= 0 && a->sel < a->scene.obj_count) {
@@ -1047,7 +1107,7 @@ static void draw_help(App *a)
         "arrows    look around",
         "click     build the current tool",
         "rclick    cancel the anchor, or take a panel",
-        "1..9, tab switch tool",
+        "1..9, 0   switch tool, tab for the next",
         "m         flip the block material",
         "r         turn the block under the cursor",
         "g         toggle snapping to the half-metre",
@@ -1075,9 +1135,11 @@ static void app_draw(Engine *e)
     App *a = engine_user(e);
     ViewStats stats;
     Render *r = engine_render(e);
+    int ss;
 
     refresh_basis(a);
-    view_render(&a->scene, &a->meshes, &a->water, &a->cam, r, 1, 0.0f, &stats);
+    ss = a->res > 0.5f ? (int)(a->res + 0.5f) : engine_ss(e);
+    view_render(&a->scene, &a->meshes, &a->water, &a->cam, r, ss, 0.0f, &stats);
 
     if (a->grid) {
         draw_grid(a);
@@ -1118,7 +1180,7 @@ static void app_draw(Engine *e)
         char line[160];
 
         (void)snprintf(line, sizeof line,
-                       " h help   g snap   tab tool   %s%s   %s",
+                       " h help   g snap   tab tool   %dx   %s%s   %s", ss,
                        a->path, a->scene.have_spawn ? "" : " (no spawn)",
                        TOOL_HINT[a->tool]);
         render_text(r, 0, a->rows - 1, line, RGB(96, 132, 160));
@@ -1142,7 +1204,9 @@ int main(int argc, char **argv)
     a.riser = 0.25f;
     a.stair_w = 1.6f;
     a.wall = 0.25f;
+    a.depth = 2.0f;
     a.lamp_i = 4.0f;
+    a.res = 0.0f;
     a.last_t = 12.0f;
     a.cam.fov = 1.05f;
     a.cam.pitch = -0.4f;

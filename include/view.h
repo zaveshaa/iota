@@ -23,6 +23,10 @@ typedef struct {
     int budget_hit;
 } ViewStats;
 
+// how many rays each cell gathers before it settles on a glyph and a colour;
+// past four the cost climbs faster than the eye can tell
+#define VIEW_SS_MAX 4
+
 void view_render(const Scene *s, const Meshes *ms, const Water *w,
                  const Camera *cam, Render *r, int ss, float budget_ms,
                  ViewStats *st);

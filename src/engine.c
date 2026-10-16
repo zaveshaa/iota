@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "view.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -162,13 +163,19 @@ void engine_run(Engine *e)
         render_present(e->render);
         e->draw_ms = (now_sec() - d0) * 1000.0;
 
-        /* two samples are worth it only if they fit the budget */
-        if (e->ss == 1) {
-            if (e->draw_ms * 2.0 < FRAME_BUDGET_MS) {
-                e->ss = 2;
+        /* one more sample per cell is worth it only if the frame still fits;
+           the cost climbs with the square of the count, so the frame time is
+           scaled by that ratio before it is believed */
+        if (e->ss < VIEW_SS_MAX) {
+            double next = (double)(e->ss + 1) * (double)(e->ss + 1);
+            double cur = (double)e->ss * (double)e->ss;
+
+            if (e->draw_ms * next / cur < FRAME_BUDGET_MS) {
+                e->ss++;
             }
-        } else if (e->draw_ms > FRAME_BUDGET_MS) {
-            e->ss = 1;
+        }
+        if (e->ss > 1 && e->draw_ms > FRAME_BUDGET_MS) {
+            e->ss--;
         }
 
         {
