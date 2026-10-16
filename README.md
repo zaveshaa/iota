@@ -64,15 +64,20 @@ way of the walk, thrown into splashes as the body steps through it, and the
 body wades slower under the water's drag. `./walk <level>` opens a saved
 level instead, and drops the body at its spawn.
 
-`./editor [level]` lays out a level. The camera flies free and the pointer
-moves a cursor whose ray picks the surface under it. A tool shapes what a pair
-of clicks builds: a `box` spans two corners in the chosen material, `water`
-floods a rectangle, `stairs` rise from a foot to a top, `spawn` sets where the
-body starts, `light` hangs a lamp, `paint` turns a block's material over,
-and `erase` takes a panel away. The first click drops an anchor, a ghost
-previews the build as the pointer moves, and the second click lays it down.
-`r` turns the block under the cursor about the vertical. `Ctrl+S` and `Ctrl+O`
-write and read the level as text.
+`./editor [level]` lays out a level. A panel down the left side holds the tools,
+the material and the shape settings, drawn with a small immediate-mode widget
+set that redraws itself every frame the way Dear ImGui does; a click on the
+panel is swallowed there and never reaches the world. The camera flies free and
+the pointer moves a cursor whose ray picks the surface under it. A tool shapes
+what a pair of clicks builds: a `box` spans two corners in the chosen material,
+`water` floods a rectangle, `stairs` rise from a foot to a top, `tunnel` bores a
+roofed, open-ended corridor, `spawn` sets where the body starts, `light` hangs a
+lamp, `paint` turns a block's material over, and `erase` takes a panel away. The
+`select` tool picks a panel or a lamp and the panel then edits its position,
+size and power. The first click drops an anchor, a ghost previews the build as
+the pointer moves, and the second click lays it down. A ground grid with coloured
+axes can be turned on to line the walls up. `r` turns the block under the cursor
+about the vertical. `Ctrl+S` and `Ctrl+O` write and read the level as text.
 
 ## Level format
 
@@ -80,15 +85,17 @@ A level is text, one directive per line, `#` comments. `iota 1` heads the
 file; `spawn` gives the body's start; `ambient`, `fog` and `sky` carry the
 lighting and the sky colours; `water` marks a pool's rectangle, level and grid
 spacing; `obj` lists a box, sphere, plane or mesh with its position, half
-extents, axis, colour, flags and mesh index; `light` lists a point or sun
-light. Colours are six hex digits, flags are the object's bits.
+extents, axis, colour, flags, mesh index and a yaw about the vertical; `light`
+lists a point or sun light. Colours are six hex digits, flags are the object's
+bits.
 
 ## Editor controls
 
 | Key | Action |
 | --- | --- |
-| mouse | move the cursor, click to anchor and to build |
-| `1` … `7` | tool: box, water, stairs, spawn, light, paint, erase |
+| mouse | move the cursor, click to anchor and to build; the panel takes its own clicks |
+| `1` … `9` | tool: box, water, stairs, tunnel, spawn, light, select, paint, erase |
+| `Tab` | cycle to the next tool |
 | `m` | block material: wall, tile, mirror |
 | `r` | turn the block under the cursor an eighth of a turn |
 | right click | cancel the anchor, or take the panel under the cursor |
@@ -96,9 +103,15 @@ light. Colours are six hex digits, flags are the object's bits.
 | `space` / `c` | rise and sink |
 | arrow keys | look |
 | `g` | toggle grid snapping |
+| `h` | show the key list |
 | `p` | set the spawn at the cursor |
 | `u` | undo, `n` new, `Ctrl+S` save, `Ctrl+O` load |
 | `Esc` | cancel the anchor, or quit |
+
+The panel carries the tool and material buttons, steppers for the stair riser,
+stair width, tunnel wall thickness and the new lamp's power, toggles for the
+snapping and the ground grid, and the properties of whatever the `select` tool
+last picked.
 
 ## Controls
 

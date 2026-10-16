@@ -1,6 +1,10 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+#define RGB(r, g, b)                                                       \
+    ((((unsigned)(r) & 0xffu) << 16) | (((unsigned)(g) & 0xffu) << 8) |   \
+     ((unsigned)(b) & 0xffu))
+
 typedef struct Render Render;
 
 Render *render_open(int cols, int rows);
