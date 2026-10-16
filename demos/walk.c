@@ -143,17 +143,19 @@ static int cmp_map(const void *x, const void *y)
     return strcmp((const char *)x, (const char *)y);
 }
 
-// the levels in the working directory, so Tab can walk from one to the next
-static int scan_maps(char maps[MAP_MAX][MAP_NAME])
+// the levels reachable from here, so Tab can walk from one to the next: first
+// the working directory, then a levels/ folder when one is there
+static void scan_dir(char maps[MAP_MAX][MAP_NAME], int *n, const char *dir,
+                     const char *prefix)
 {
-    DIR *d = opendir(".");
+    DIR *d = opendir(dir);
     struct dirent *de;
-    int n = 0;
+    size_t pl = strlen(prefix);
 
     if (d == NULL) {
-        return 0;
+        return;
     }
-    while ((de = readdir(d)) != NULL && n < MAP_MAX) {
+    while ((de = readdir(d)) != NULL && *n < MAP_MAX) {
         size_t len = strlen(de->d_name);
 
         if (de->d_name[0] == '.' || len < 4 || len >= (size_t)MAP_NAME) {
@@ -162,10 +164,22 @@ static int scan_maps(char maps[MAP_MAX][MAP_NAME])
         if (strcmp(de->d_name + len - 4, ".lvl") != 0) {
             continue;
         }
-        (void)snprintf(maps[n], MAP_NAME, "%s", de->d_name);
-        n++;
+        if (pl + len >= (size_t)MAP_NAME) {
+            continue;
+        }
+        memcpy(maps[*n], prefix, pl);
+        memcpy(maps[*n] + pl, de->d_name, len + 1);
+        (*n)++;
     }
     closedir(d);
+}
+
+static int scan_maps(char maps[MAP_MAX][MAP_NAME])
+{
+    int n = 0;
+
+    scan_dir(maps, &n, ".", "");
+    scan_dir(maps, &n, "levels", "levels/");
     qsort(maps, (size_t)n, MAP_NAME, cmp_map);
     return n;
 }
