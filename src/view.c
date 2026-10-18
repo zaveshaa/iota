@@ -98,12 +98,96 @@ static Vec3 shade(const Scene *s, const Hit *h)
     return acc;
 }
 
+static float smoothstep01(float e0, float e1, float x)
+{
+    float t;
+
+    if (e1 <= e0) {
+        return x >= e1 ? 1.0f : 0.0f;
+    }
+    t = clamp01((x - e0) / (e1 - e0));
+    return t * t * (3.0f - 2.0f * t);
+}
+
+static unsigned hash_u(unsigned x)
+{
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
+
+// one star is offered per cell of a grid laid over the direction; a sparse
+// hash keeps only a few, each a bright point about a pixel across
+static float star_field(Vec3 dir)
+{
+    float px = dir.x * 48.0f;
+    float py = dir.y * 48.0f;
+    float pz = dir.z * 48.0f;
+    int ix = (int)floorf(px);
+    int iy = (int)floorf(py);
+    int iz = (int)floorf(pz);
+    unsigned h = hash_u((unsigned)ix * 73856093u ^
+                        (unsigned)iy * 19349663u ^
+                        (unsigned)iz * 83492791u);
+
+    if ((h & 127u) != 0u) {
+        return 0.0f;
+    }
+    {
+        float a = (float)((h >> 3) & 0xffu) / 255.0f;
+        float b = (float)((h >> 11) & 0xffu) / 255.0f;
+        float c = (float)((h >> 19) & 0xffu) / 255.0f;
+        float dx = px - ((float)ix + a);
+        float dy = py - ((float)iy + b);
+        float dz = pz - ((float)iz + c);
+        float d2 = dx * dx + dy * dy + dz * dz;
+
+        if (d2 < 0.6f) {
+            float bright = (float)((h >> 27) & 0x1fu) / 31.0f;
+
+            return (1.0f - d2 / 0.6f) * (0.5f + 0.5f * bright);
+        }
+    }
+    return 0.0f;
+}
+
 static Vec3 sky_color(const Scene *s, Vec3 dir)
 {
     float t = clamp01(dir.y);
+    Vec3 c;
 
     t *= t;
-    return mix(rgb_vec(s->sky_horizon), rgb_vec(s->sky_top), t);
+    c = mix(rgb_vec(s->sky_horizon), rgb_vec(s->sky_top), t);
+    if (s->have_moon) {
+        Vec3 md = v3_norm(s->sky_moon_dir);
+        float cd = v3_dot(dir, md);
+        float r = s->sky_moon_size > 0.001f ? s->sky_moon_size : 0.05f;
+        float ang;
+
+        if (cd > 1.0f) {
+            cd = 1.0f;
+        }
+        if (cd < -1.0f) {
+            cd = -1.0f;
+        }
+        ang = acosf(cd);
+        if (ang < r * 3.0f) {
+            float g = 1.0f - smoothstep01(r, r * 3.0f, ang);
+
+            c = v3_add(c, v3_mul(rgb_vec(s->sky_moon), g));
+        }
+    }
+    if (dir.y > 0.12f) {
+        float st = star_field(dir);
+
+        if (st > 0.0f) {
+            c = v3_add(c, v3(st, st, st * 1.05f));
+        }
+    }
+    return c;
 }
 
 #define TILE_SIZE 0.8f

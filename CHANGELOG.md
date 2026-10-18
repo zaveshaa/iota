@@ -18,6 +18,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   body steps through it, and a body in the water drags as it wades.
 - A level carries its own springs: any number of `spout` mouths feed the pool,
   so a saved map stirs ripples and lifts steam where walk loads it.
+- The sky carries a field of stars and, when a level hangs one, a moon: the
+  `sky` line takes the moon's direction, colour and size.
 
 ### Changed
 

@@ -96,7 +96,9 @@ and `Ctrl+O` write and read the level as text.
 
 A level is text, one directive per line, `#` comments. `iota 1` heads the
 file; `spawn` gives the body's start; `ambient`, `fog` and `sky` carry the
-lighting and the sky colours; `water` marks a pool's rectangle, level and grid
+lighting and the sky colours, with an optional moon on the `sky` line (its
+direction, colour and size) over a procedural starfield; `water` marks a pool's
+rectangle, level and grid
 spacing, with any number of `spout` lines giving a spring's mouth above the
 water and how hard it pours; `obj` lists a box, sphere, plane or mesh with its
 position, half extents, axis, colour, flags, mesh index and a yaw about the
@@ -144,7 +146,8 @@ edit when clicked, so an exact value can be typed rather than nudged.
 One ray per cell at the base sample, nearest hit kept, so thin geometry
 survives and objects occlude the floor and each other. A surface is shaded
 by the scene's lights — ambient plus every point and sun light that sees
-it — and fog takes over with distance.
+it — and fog takes over with distance. A ray that meets nothing gets the sky:
+a top-to-horizon gradient, a field of stars, and the moon the scene hangs.
 
 A hit carries an action. A plain surface is shaded and done; a mirror
 reflects the ray about the surface normal and traces again, up to two
