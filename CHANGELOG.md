@@ -16,6 +16,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   demo hangs a loaded gem over the range.
 - Water: a smoothed-particle pool sits in the walk range, splashes where the
   body steps through it, and a body in the water drags as it wades.
+- A level carries its own springs: any number of `spout` mouths feed the pool,
+  so a saved map stirs ripples and lifts steam where walk loads it.
 
 ### Changed
 

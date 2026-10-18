@@ -203,8 +203,14 @@ static void load_slot(App *a, int slot)
             return;
         }
         if (a->scene.have_water) {
+            int i;
+
             water_open(&a->water, a->scene.water.lo, a->scene.water.hi,
                        a->scene.water.level, a->scene.water.spacing);
+            for (i = 0; i < a->scene.water.spout_count; i++) {
+                water_spout(&a->water, a->scene.water.spouts[i].top,
+                            a->scene.water.spouts[i].rate);
+            }
         } else {
             water_close(&a->water);
         }

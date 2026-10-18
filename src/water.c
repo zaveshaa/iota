@@ -169,7 +169,7 @@ static float rng_unit(unsigned *state)
     return (float)((*state >> 8) & 0xffffu) / 65535.0f;
 }
 
-static void steam_spawn(Water *w)
+static void steam_spawn(Water *w, const Spout *sp)
 {
     Steam *s;
 
@@ -178,9 +178,9 @@ static void steam_spawn(Water *w)
     }
     s = &w->steam[w->steam_n];
     w->steam_n++;
-    s->p = v3(w->spout_x + (rng_unit(&w->rng) - 0.5f) * 0.5f,
-              water_surface(w, w->spout_x, w->spout_z) + 0.05f,
-              w->spout_z + (rng_unit(&w->rng) - 0.5f) * 0.5f);
+    s->p = v3(sp->top.x + (rng_unit(&w->rng) - 0.5f) * 0.5f,
+              water_surface(w, sp->top.x, sp->top.z) + 0.05f,
+              sp->top.z + (rng_unit(&w->rng) - 0.5f) * 0.5f);
     s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.4f,
               0.6f + rng_unit(&w->rng) * 0.9f,
               (rng_unit(&w->rng) - 0.5f) * 0.4f);
@@ -211,28 +211,36 @@ static void steam_step(Water *w, float dt)
 
 void water_spout(Water *w, Vec3 top, float rate)
 {
-    w->spout_on = 1;
-    w->spout_x = top.x;
-    w->spout_y = top.y;
-    w->spout_z = top.z;
-    w->spout_rate = rate > 0.0f ? rate : 0.0f;
+    Spout *sp;
+
+    if (w->spout_n >= WATER_SPOUT_MAX) {
+        return;
+    }
+    sp = &w->spouts[w->spout_n];
+    w->spout_n++;
+    sp->top = top;
+    sp->rate = rate > 0.0f ? rate : 0.0f;
+    sp->spawn_acc = 0.0f;
 }
 
 void water_step(Water *w, float dt)
 {
+    int k;
+
     if (w->cur == NULL) {
         return;
     }
     w->t += dt;
-    if (w->spout_on) {
-        float pulse = 0.7f + 0.3f * sinf(w->t * 6.5f);
+    for (k = 0; k < w->spout_n; k++) {
+        Spout *sp = &w->spouts[k];
+        float pulse = 0.7f + 0.3f * sinf(w->t * 6.5f + (float)k * 1.7f);
 
-        add_ripple(w, w->spout_x, w->spout_z, 0.32f,
-                   (0.9f + 0.3f * pulse) * w->spout_rate * dt);
-        w->spawn_acc += w->spout_rate * dt * 14.0f;
-        while (w->spawn_acc >= 1.0f) {
-            w->spawn_acc -= 1.0f;
-            steam_spawn(w);
+        add_ripple(w, sp->top.x, sp->top.z, 0.32f,
+                   (0.9f + 0.3f * pulse) * sp->rate * dt);
+        sp->spawn_acc += sp->rate * dt * 14.0f;
+        while (sp->spawn_acc >= 1.0f) {
+            sp->spawn_acc -= 1.0f;
+            steam_spawn(w, sp);
         }
     }
     steam_step(w, dt);

@@ -101,6 +101,12 @@ int level_save(const Scene *s, const char *path)
                       (double)s->water.hi.z, (double)s->water.level,
                       (double)s->water.spacing);
     }
+    for (i = 0; i < s->water.spout_count; i++) {
+        const SpoutSpec *sp = &s->water.spouts[i];
+
+        (void)fprintf(f, "spout %g %g %g %g\n", (double)sp->top.x,
+                      (double)sp->top.y, (double)sp->top.z, (double)sp->rate);
+    }
     for (i = 0; i < s->obj_count; i++) {
         const Obj *o = &s->objs[i];
 
@@ -164,6 +170,14 @@ int level_load(Scene *s, const char *path)
             s->water.level = tf(tok[5]);
             s->water.spacing = tf(tok[6]);
             s->have_water = 1;
+        } else if (strcmp(tok[0], "spout") == 0 && n >= 5) {
+            if (s->water.spout_count < SCENE_MAX_SPOUTS) {
+                SpoutSpec *sp = &s->water.spouts[s->water.spout_count];
+
+                s->water.spout_count++;
+                sp->top = v3(tf(tok[1]), tf(tok[2]), tf(tok[3]));
+                sp->rate = tf(tok[4]);
+            }
         } else if (strcmp(tok[0], "obj") == 0 && n >= 13) {
             Obj *o = scene_add_obj(s);
 

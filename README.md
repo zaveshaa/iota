@@ -66,7 +66,8 @@ instead, and drops the body at its spawn. `Tab` steps to the next `.lvl` in the
 working directory or in `levels/`, the body restarting at that map's spawn, and
 wraps back to the built-in range after the last one; the current map sits in the
 corner of the status line. Two sample maps ship in `levels/`: `bathhouse.lvl`, a
-warm tiled bath ringed by pillars and lanterns, and `castle.lvl`, a small island
+warm tiled bath ringed by pillars and lanterns, its springs pouring steam, and
+`castle.lvl`, a small island
 joined by a humpback bridge to a Japanese castle whose floors rise from public
 baths, through private ones, to a top-floor study.
 
@@ -96,10 +97,11 @@ and `Ctrl+O` write and read the level as text.
 A level is text, one directive per line, `#` comments. `iota 1` heads the
 file; `spawn` gives the body's start; `ambient`, `fog` and `sky` carry the
 lighting and the sky colours; `water` marks a pool's rectangle, level and grid
-spacing; `obj` lists a box, sphere, plane or mesh with its position, half
-extents, axis, colour, flags, mesh index and a yaw about the vertical; `light`
-lists a point or sun light. Colours are six hex digits, flags are the object's
-bits.
+spacing, with any number of `spout` lines giving a spring's mouth above the
+water and how hard it pours; `obj` lists a box, sphere, plane or mesh with its
+position, half extents, axis, colour, flags, mesh index and a yaw about the
+vertical; `light` lists a point or sun light. Colours are six hex digits, flags
+are the object's bits.
 
 ## Editor controls
 
