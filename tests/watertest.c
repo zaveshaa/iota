@@ -145,10 +145,12 @@ static void spout_stirs_and_steams(void)
     int differs = 0;
     int i;
 
+    w.heat = 1.0f;
     water_spout(&w, v3(0.0f, 2.0f, 2.0f), 1.0f);
     step(&w, 1.0f);
     step(&q, 1.0f);
-    check(w.steam_n > 0, "a spout lifts steam off the pool");
+    check(w.steam_n > 0, "a hot spout lifts steam off the pool");
+    check(q.heat == 0.0f && q.steam_n == 0, "a cold pool steams nowhere");
     for (i = 0; i < w.nx * w.nz; i++) {
         float x = w.x0 + (float)(i % w.nx) * w.spacing;
         float z = w.z0 + (float)(i / w.nx) * w.spacing;
@@ -160,6 +162,28 @@ static void spout_stirs_and_steams(void)
     check(differs, "a spout keeps the pool moving");
     water_close(&w);
     water_close(&q);
+}
+
+static void hot_surface_steams_across(void)
+{
+    Water w = make_pool();
+    int n;
+    int i;
+
+    w.heat = 1.0f;
+    for (n = 0; n < 12; n++) {
+        step(&w, 0.25f);
+    }
+    check(w.steam_n > 5, "a hot pool steams across its whole surface");
+    for (i = 0; i < w.steam_n; i++) {
+        const Steam *s = &w.steam[i];
+
+        if (s->span < 40.0f) {
+            break;
+        }
+    }
+    check(i == w.steam_n, "the puffs live long enough to rise far");
+    water_close(&w);
 }
 
 static void deterministic(void)
@@ -197,6 +221,7 @@ int main(void)
     body_stirs_the_pool();
     ripples_stay_bounded();
     spout_stirs_and_steams();
+    hot_surface_steams_across();
     deterministic();
     (void)printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures != 0;

@@ -303,6 +303,11 @@ static unsigned mix_ink(unsigned a, unsigned b, float f)
 // A cell's ray is fwd + rt*xr + up*yu, so where that ray crosses the plane
 // through the puff, measured against the puff itself, sits at (z*xr - rel_rt,
 // z*yu - rel_up) — no normalising needed.
+#define STEAM_LOBES 4
+
+// steam is drawn as a small cluster of overlapping lobes about the mote, so
+// each puff reads as a rounded but irregular wisp rather than a perfect disc.
+// the lobes come from the mote's own seed and drift with it.
 static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
                         Vec3 fwd, Vec3 rt, Vec3 up, float tan_half, float aspect,
                         int cols, int rows, float alpha)
@@ -313,6 +318,8 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
     float z = v3_dot(rel, fwd);
     float rel_rt = v3_dot(rel, rt);
     float rel_up = v3_dot(rel, up);
+    float lb[STEAM_LOBES][3];
+    float bound = 0.0f;
     float cellw;
     float kx;
     float ky;
@@ -320,20 +327,33 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
     float yu0;
     float ox0;
     float oy0;
-    float r2;
     int cx;
     int cy;
     int rad;
     int dx;
     int dy;
     int last = (int)(sizeof ramp - 2);
+    int l;
 
     if (z <= 0.05f) {
         return;
     }
+    for (l = 0; l < STEAM_LOBES; l++) {
+        unsigned h = hash_u(p->seed + (unsigned)l * 0x9e3779b9u);
+        float a = (float)(h & 0xffffu) / 65535.0f * 6.2831853f;
+        float off = (float)((h >> 8) & 0xffu) / 255.0f * 0.45f * p->radius;
+        float rr =
+            (0.5f + (float)((h >> 16) & 0xffu) / 255.0f * 0.4f) * p->radius;
+
+        lb[l][0] = cosf(a) * off;
+        lb[l][1] = sinf(a) * off;
+        lb[l][2] = rr;
+        if (off + rr > bound) {
+            bound = off + rr;
+        }
+    }
     cx = (int)((rel_rt / (z * aspect * tan_half) + 1.0f) * 0.5f * (float)cols);
     cy = (int)((1.0f - rel_up / (z * tan_half)) * 0.5f * (float)rows);
-    r2 = p->radius * p->radius;
     kx = 2.0f * aspect * tan_half / (float)cols;
     ky = -2.0f * tan_half / (float)rows;
     cellw = -z * ky;
@@ -341,12 +361,12 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
     yu0 = (1.0f - 2.0f * ((float)cy + 0.5f) / (float)rows) * tan_half;
     ox0 = z * xr0 - rel_rt;
     oy0 = z * yu0 - rel_up;
-    rad = (int)(p->radius / cellw + 0.5f);
+    rad = (int)(bound / cellw + 0.5f);
     if (rad < 1) {
         rad = 1;
     }
-    if (rad > 3) {
-        rad = 3;
+    if (rad > 4) {
+        rad = 4;
     }
     for (dy = -rad; dy <= rad; dy++) {
         for (dx = -rad; dx <= rad; dx++) {
@@ -354,19 +374,28 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
             int gy = cy + dy;
             float oxp = ox0 + z * kx * (float)dx;
             float oyp = oy0 + z * ky * (float)dy;
-            float d2 = oxp * oxp + oyp * oyp;
+            float dens = 0.0f;
             float xr;
             float yu;
             float s;
             float edge;
-            float dens;
             float blend;
             int gi;
 
             if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) {
                 continue;
             }
-            if (d2 > r2) {
+            for (l = 0; l < STEAM_LOBES; l++) {
+                float ddx = oxp - lb[l][0];
+                float ddy = oyp - lb[l][1];
+                float rr = lb[l][2];
+                float w2 = 1.0f - (ddx * ddx + ddy * ddy) / (rr * rr);
+
+                if (w2 > 0.0f) {
+                    dens += w2;
+                }
+            }
+            if (dens <= 0.0f) {
                 continue;
             }
             xr = xr0 + kx * (float)dx;
@@ -375,7 +404,10 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
             if (s > zbuf[(size_t)gy * (size_t)cols + (size_t)gx] + 0.1f) {
                 continue;
             }
-            edge = 1.0f - d2 / r2;
+            edge = dens / (float)STEAM_LOBES;
+            if (edge > 1.0f) {
+                edge = 1.0f;
+            }
             dens = alpha * edge * edge;
             if (dens < 0.04f) {
                 continue;
@@ -653,9 +685,9 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
         }
         for (k = 0; k < w->steam_n; k++) {
             const Steam *puff = &w->steam[k];
-            float age = 1.0f - puff->life / puff->span;
-            float fin = clamp01(age / 0.2f);
-            float fout = clamp01((1.0f - age) / 0.5f);
+            float age_s = puff->span - puff->life;
+            float fin = clamp01(age_s / 1.5f);
+            float fout = clamp01(puff->life / 14.0f);
             float alpha = 0.62f * fin * fout;
 
             if (alpha < 0.05f) {

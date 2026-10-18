@@ -293,6 +293,7 @@ static void steam_checks(void)
     (void)memset(&w, 0, sizeof w);
     water_open(&w, v3(-3.0f, -1.0f, -3.0f), v3(3.0f, -1.0f, 3.0f), -0.5f,
                0.5f);
+    w.heat = 1.0f;
     water_spout(&w, v3(0.0f, 1.6f, 0.0f), 3.0f);
     for (i = 0; i < 150; i++) {
         water_step(&w, 1.0f / 60.0f);

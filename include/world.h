@@ -42,12 +42,14 @@ typedef struct {
 
 // where a pool of water sits: a rectangle in the ground plane and the height
 // its surface rests at, with the spacing the ripple grid is laid out on, plus
-// the springs that pour into it
+// the springs that pour into it. Heat is how hot the water is: a steaming
+// bath is hot, an ocean is not.
 typedef struct {
     Vec3 lo;
     Vec3 hi;
     float level;
     float spacing;
+    float heat;
     SpoutSpec spouts[SCENE_MAX_SPOUTS];
     int spout_count;
 } WaterSpec;

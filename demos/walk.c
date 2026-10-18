@@ -220,6 +220,7 @@ static void load_slot(App *a, int slot)
         build_range(&a->scene, a->gem);
         water_open(&a->water, v3(7.9f, 0.0f, -9.1f), v3(16.1f, 0.0f, -0.9f),
                    -0.8f, 0.5f);
+        a->water.heat = 1.0f;
         water_spout(&a->water, v3(10.0f, 2.2f, -3.0f), 1.1f);
         water_spout(&a->water, v3(8.6f, 2.0f, -6.6f), 0.8f);
         water_spout(&a->water, v3(13.8f, 2.4f, -4.2f), 0.9f);
@@ -237,6 +238,7 @@ static void load_slot(App *a, int slot)
 
             water_open(&a->water, a->scene.water.lo, a->scene.water.hi,
                        a->scene.water.level, a->scene.water.spacing);
+            a->water.heat = a->scene.water.heat;
             for (i = 0; i < a->scene.water.spout_count; i++) {
                 water_spout(&a->water, a->scene.water.spouts[i].top,
                             a->scene.water.spouts[i].rate);

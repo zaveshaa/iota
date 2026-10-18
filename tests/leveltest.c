@@ -50,6 +50,7 @@ static void round_trip(void)
     a.water.hi = v3(2.0f, 0.0f, 1.0f);
     a.water.level = -0.8f;
     a.water.spacing = 0.5f;
+    a.water.heat = 0.7f;
     a.water.spouts[0].top = v3(0.0f, 2.0f, 0.0f);
     a.water.spouts[0].rate = 1.1f;
     a.water.spouts[1].top = v3(1.5f, 1.6f, -0.5f);
@@ -77,6 +78,7 @@ static void round_trip(void)
     check(b.have_water && b.water.lo.x == -2.0f && b.water.hi.z == 1.0f &&
               b.water.level == -0.8f,
           "a pool keeps its breadth and level");
+    check(b.water.heat == 0.7f, "a steaming pool keeps its heat");
     check(b.water.spout_count == 2 && b.water.spouts[1].top.x == 1.5f &&
               b.water.spouts[0].rate == 1.1f,
           "a pool keeps the springs that feed it");

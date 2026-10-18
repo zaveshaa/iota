@@ -29,6 +29,12 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a thin string of single specks or a solid mass. A frame remembers the depth
   of what it drew, so no mote or spring jet shows through a wall standing in
   front of it.
+- Water carries heat. A hot pool — the bath, a hot spring — breathes steam
+  from across its whole surface, and the motes rise far and live about a
+  minute before the top ones thin out; a cold pool, an ocean, steams nowhere.
+  Each mote is a few overlapping lobes, so a puff reads as a rounded but
+  irregular wisp rather than a perfect disc. The `water` line takes an
+  optional heat after its spacing.
 
 ### Changed
 
