@@ -377,6 +377,60 @@ static int write_golden(const char *path, const Render *r)
     return 0;
 }
 
+static void shoji_checks(void)
+{
+    static unsigned char ca[STEAM_COLS * STEAM_ROWS];
+    static unsigned char cb[STEAM_COLS * STEAM_ROWS];
+    static unsigned ia[STEAM_COLS * STEAM_ROWS];
+    static unsigned ib[STEAM_COLS * STEAM_ROWS];
+    Scene s;
+    Camera cam;
+    Obj *o;
+    Light *l;
+
+    cam.pos = v3(0.0f, 1.6f, -4.0f);
+    cam.yaw = 0.0f;
+    cam.pitch = 0.0f;
+    cam.fov = 1.05f;
+
+    // a screen that fills the view, with a lit wall behind it: the paper lets
+    // a ghost of what stands behind filter through, so taking the light away
+    // dims the panes
+    scene_clear(&s);
+    s.ambient = RGB(24, 26, 34);
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 1.6f, 0.0f);
+    o->half = v3(20.0f, 12.0f, 0.1f);
+    o->ink = RGB(224, 214, 192);
+    o->flags = OBJ_SHOJI;
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 1.6f, 3.0f);
+    o->half = v3(20.0f, 12.0f, 0.5f);
+    o->ink = RGB(120, 170, 255);
+    l = scene_add_light(&s);
+    l->kind = LIGHT_POINT;
+    l->pos = v3(0.0f, 1.6f, 2.0f);
+    l->color = v3(0.6f, 0.8f, 1.0f);
+    l->intensity = 8.0f;
+    render_grid(&s, NULL, &cam, ca, ia);
+    s.light_count = 0;
+    render_grid(&s, NULL, &cam, cb, ib);
+    check(!grids_same(ca, ia, cb, ib),
+          "light behind a shoji screen filters through its paper", NULL);
+
+    // the same screen as a plain wall keeps what stands behind it out of
+    // sight: the back light never reaches the near face
+    s.objs[0].flags = 0u;
+    s.light_count = 1;
+    render_grid(&s, NULL, &cam, ca, ia);
+    s.light_count = 0;
+    render_grid(&s, NULL, &cam, cb, ib);
+    check(grids_same(ca, ia, cb, ib),
+          "a plain wall keeps what stands behind it out of sight", NULL);
+}
+
 int main(int argc, char **argv)
 {
     static unsigned want[GOLD_COLS * GOLD_ROWS];
@@ -399,6 +453,7 @@ int main(int argc, char **argv)
     yaw_checks();
     shadow_checks();
     steam_checks();
+    shoji_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {

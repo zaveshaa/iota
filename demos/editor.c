@@ -71,7 +71,8 @@ typedef struct {
 static const Material MATS[] = {
     {"wall", RGB(150, 150, 152), 0u},
     {"tile", RGB(96, 100, 116), OBJ_TILE},
-    {"mirror", RGB(84, 92, 112), OBJ_MIRROR}
+    {"mirror", RGB(84, 92, 112), OBJ_MIRROR},
+    {"shoji", RGB(224, 214, 192), OBJ_SHOJI}
 };
 
 #define MAT_COUNT ((int)(sizeof MATS / sizeof MATS[0]))
@@ -648,33 +649,35 @@ static void place_light(App *a, Vec3 p)
     say(a, "hung a lamp");
 }
 
+static int mat_of(unsigned flags)
+{
+    int i;
+
+    for (i = 0; i < MAT_COUNT; i++) {
+        if (MATS[i].flags == flags) {
+            return i;
+        }
+    }
+    return 0;
+}
+
 static void cycle_material(Obj *o)
 {
-    if ((o->flags & OBJ_MIRROR) != 0u) {
-        o->flags = 0u;
-        o->ink = MATS[0].ink;
-    } else if ((o->flags & OBJ_TILE) != 0u) {
-        o->flags = OBJ_MIRROR;
-        o->ink = MATS[2].ink;
-    } else {
-        o->flags = OBJ_TILE;
-        o->ink = MATS[1].ink;
-    }
+    int i = (mat_of(o->flags) + 1) % MAT_COUNT;
+
+    o->flags = MATS[i].flags;
+    o->ink = MATS[i].ink;
 }
 
 static void paint_under(App *a, const Obj *obj)
 {
-    const char *name;
-
     if (obj == NULL) {
         say(a, "nothing under the cursor");
         return;
     }
     cycle_material((Obj *)obj);
-    name = (obj->flags & OBJ_MIRROR) != 0u ? MATS[2].name
-           : (obj->flags & OBJ_TILE) != 0u ? MATS[1].name
-                                           : MATS[0].name;
-    (void)snprintf(a->msg, sizeof a->msg, "now a %s block", name);
+    (void)snprintf(a->msg, sizeof a->msg, "now a %s block",
+                   MATS[mat_of(obj->flags)].name);
 }
 
 static void rotate_under(App *a)

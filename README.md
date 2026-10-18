@@ -67,7 +67,8 @@ instead, and drops the body at its spawn. `Tab` steps to the next `.lvl` in the
 working directory or in `levels/`, the body restarting at that map's spawn, and
 wraps back to the built-in range after the last one; the current map sits in the
 corner of the status line. Two sample maps ship in `levels/`: `bathhouse.lvl`, a
-warm tiled bath ringed by pillars and lanterns, its springs pouring steam, and
+warm tiled bath ringed by pillars, lanterns and glowing shoji screens, its
+springs pouring steam, and
 `castle.lvl`, a small island
 joined by a humpback bridge to a Japanese castle whose floors rise from public
 baths, through private ones, to a top-floor study.
@@ -114,7 +115,7 @@ are the object's bits.
 | mouse | move the cursor, click to anchor and to build; the panel takes its own clicks |
 | `1` … `9`, `0` | tool: box, wall, water, stairs, tunnel, pit, spawn, light, select, paint |
 | `Tab` | cycle to the next tool, including `erase` past the tenth |
-| `m` | block material: wall, tile, mirror |
+| `m` | block material: wall, tile, mirror, shoji |
 | `r` | turn the block under the cursor an eighth of a turn |
 | click a number | type the value in, Enter lands it, Escape drops it |
 | right click | cancel the anchor, or take the panel under the cursor |
@@ -155,7 +156,9 @@ a top-to-horizon gradient, a field of stars, and the moon the scene hangs.
 
 A hit carries an action. A plain surface is shaded and done; a mirror
 reflects the ray about the surface normal and traces again, up to two
-bounces deep. A frame that overruns the budget says `BUDGET` on the status
+bounces deep; a shoji screen shades its wooden lattice solid and lets a
+softened, paper-tinted ghost of whatever stands behind show through its
+panes. A frame that overruns the budget says `BUDGET` on the status
 line, and the engine lowers the sample count for the next frame rather than
 stopping the ray early.
 
