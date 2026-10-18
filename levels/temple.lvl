@@ -1,0 +1,43 @@
+iota 1
+spawn 0 1 -15
+ambient 243036
+fog 06080e 14 60
+
+sky 060916 24324c 0.25 0.5 1.0 e8e5dc 0.07
+
+water -6 -2 6 4 0.4 1.2
+
+spout -3 2.6 -1 0.8
+spout 3 2.6 1 0.6
+
+# Courtyard ground - tiled stone
+obj box 0 -0.6 0 20 0.6 20 0 0 0 0 0 1 1a1f26 2
+
+# Bath pool surround walls
+obj box 0 1.2 -5 10 1.2 0.2 0 0 0 0 0 1 1c2127 2
+obj box 0 1.2 5 10 1.2 0.2 0 0 0 0 0 1 1c2127 2
+obj box -10 1.2 0 0.2 1.2 5 0 0 0 0 0 1 1c2127 2
+obj box 10 1.2 0 0.2 1.2 5 0 0 0 0 0 1 1c2127 2
+
+# Bath interior steps
+obj box -4 0.4 -4 2 0.4 2 0 0 0 0 0 1 1a1f26 2
+obj box -4 0.8 -4 1.6 0.4 1.6 0 0 0 0 0 1 1a1f26 2
+obj box -4 1.2 -4 1.2 0.4 1.2 0 0 0 0 0 1 1a1f26 2
+
+# Bath roof
+obj box 0 3.6 0 10 0.2 5 0 0 0 0 0 1 1f2421 0
+
+# Outer gate posts
+obj box -12 2.2 0 0.4 2.2 0.4 0 0 0 0 0 1 1f2320 0
+obj box 12 2.2 0 0.4 2.2 0.4 0 0 0 0 0 1 1f2320 0
+obj box 0 3.8 0 12 0.4 0.4 0 0 0 0 0 1 1f2320 0
+
+# Small lanterns
+light point -12 1.6 0 eac880 0.9
+light point 12 1.6 0 eac880 0.9
+light point -8 2.6 2 eac880 0.8
+light point 8 2.6 -2 eac880 0.8
+light point 0 2.2 6 eac880 0.7
+light point -4 2.0 -4 eac880 0.6
+light point 4 2.0 4 eac880 0.6
+light point 0 4.0 0 eac880 0.5
