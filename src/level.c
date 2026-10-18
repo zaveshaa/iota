@@ -102,10 +102,14 @@ int level_save(const Scene *s, const char *path)
     }
     (void)fprintf(f, "\n");
     if (s->have_water) {
-        (void)fprintf(f, "water %g %g %g %g %g %g\n", (double)s->water.lo.x,
+        (void)fprintf(f, "water %g %g %g %g %g %g", (double)s->water.lo.x,
                       (double)s->water.lo.z, (double)s->water.hi.x,
                       (double)s->water.hi.z, (double)s->water.level,
                       (double)s->water.spacing);
+        if (s->water.heat > 0.0f) {
+            (void)fprintf(f, " %g", (double)s->water.heat);
+        }
+        (void)fprintf(f, "\n");
     }
     for (i = 0; i < s->water.spout_count; i++) {
         const SpoutSpec *sp = &s->water.spouts[i];
@@ -181,6 +185,7 @@ int level_load(Scene *s, const char *path)
             s->water.hi = v3(tf(tok[3]), 0.0f, tf(tok[4]));
             s->water.level = tf(tok[5]);
             s->water.spacing = tf(tok[6]);
+            s->water.heat = n >= 8 ? tf(tok[7]) : 0.0f;
             s->have_water = 1;
         } else if (strcmp(tok[0], "spout") == 0 && n >= 5) {
             if (s->water.spout_count < SCENE_MAX_SPOUTS) {

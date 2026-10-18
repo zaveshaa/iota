@@ -3,7 +3,7 @@
 
 #include "vec3.h"
 
-#define WATER_STEAM_MAX 96
+#define WATER_STEAM_MAX 240
 #define WATER_SPOUT_MAX 6
 
 typedef struct {
@@ -30,6 +30,7 @@ typedef struct {
     float z1;
     float base_h;
     float spacing;
+    float heat;
     int nx;
     int nz;
     float t;
@@ -41,6 +42,7 @@ typedef struct {
     unsigned rng;
     int steam_n;
     Steam steam[WATER_STEAM_MAX];
+    float steam_acc;
 } Water;
 
 void water_open(Water *w, Vec3 lo, Vec3 hi, float base_h, float spacing);

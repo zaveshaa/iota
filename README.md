@@ -99,9 +99,10 @@ A level is text, one directive per line, `#` comments. `iota 1` heads the
 file; `spawn` gives the body's start; `ambient`, `fog` and `sky` carry the
 lighting and the sky colours, with an optional moon on the `sky` line (its
 direction, colour and size) over a procedural starfield; `water` marks a pool's
-rectangle, level and grid
-spacing, with any number of `spout` lines giving a spring's mouth above the
-water and how hard it pours; `obj` lists a box, sphere, plane or mesh with its
+rectangle, level, grid spacing and an optional heat (a hot pool breathes steam,
+a cold one does not), with any number of `spout` lines giving a spring's mouth
+above the water and how hard it pours; `obj` lists a box, sphere, plane or mesh
+with its
 position, half extents, axis, colour, flags, mesh index and a yaw about the
 vertical; `light` lists a point or sun light. Colours are six hex digits, flags
 are the object's bits.
@@ -171,9 +172,12 @@ the ripples and the splash throws up a spray.
 
 Steam is drawn after the rays, but the frame remembers how far each ray
 reached, so a mote or spring jet only paints the cells where it stands in
-front of the surface — a wall in the way keeps it out. Each puff is one small
-soft mote that rises, thins toward its rim and fades, never getting thick, so
-a drift of them reads as translucent steam rather than a solid mass.
+front of the surface — a wall in the way keeps it out. A hot pool breathes
+steam from across its whole surface: each puff is a small cluster of lobes,
+so it reads as a rounded but irregular wisp that rises far and lives about a
+minute before it thins and fades, never getting thick, so a drift of them
+reads as translucent steam rather than a solid mass. A cold pool steams
+nowhere.
 
 ## Layout
 
