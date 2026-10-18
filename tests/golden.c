@@ -1,5 +1,6 @@
 #include "scene.h"
 #include "view.h"
+#include "water.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,6 +232,98 @@ static void shadow_checks(void)
           "a blocker darkens the floor it stands over", NULL);
 }
 
+#define STEAM_COLS 48
+#define STEAM_ROWS 20
+
+static void render_grid(const Scene *s, const Water *w, const Camera *cam,
+                        unsigned char *ch, unsigned *ink)
+{
+    Render *r = render_open(STEAM_COLS, STEAM_ROWS);
+    ViewStats st;
+    int x;
+    int y;
+
+    if (r == NULL) {
+        return;
+    }
+    view_render(s, NULL, w, cam, r, 1, 0.0f, &st);
+    for (y = 0; y < STEAM_ROWS; y++) {
+        for (x = 0; x < STEAM_COLS; x++) {
+            ch[(size_t)y * STEAM_COLS + (size_t)x] = render_char(r, x, y);
+            ink[(size_t)y * STEAM_COLS + (size_t)x] = render_ink(r, x, y);
+        }
+    }
+    render_close(r);
+}
+
+static int grids_same(const unsigned char *ca, const unsigned *ia,
+                      const unsigned char *cb, const unsigned *ib)
+{
+    size_t i;
+
+    for (i = 0; i < (size_t)STEAM_COLS * STEAM_ROWS; i++) {
+        if (ca[i] != cb[i] || ia[i] != ib[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void steam_checks(void)
+{
+    static unsigned char ca[STEAM_COLS * STEAM_ROWS];
+    static unsigned char cb[STEAM_COLS * STEAM_ROWS];
+    static unsigned ia[STEAM_COLS * STEAM_ROWS];
+    static unsigned ib[STEAM_COLS * STEAM_ROWS];
+    Scene s;
+    Water w;
+    Water quiet;
+    Camera cam;
+    Obj *o;
+    int i;
+
+    scene_clear(&s);
+    s.ambient = RGB(40, 44, 54);
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, -0.6f, 0.0f);
+    o->half = v3(20.0f, 0.5f, 20.0f);
+    o->ink = RGB(150, 150, 150);
+
+    (void)memset(&w, 0, sizeof w);
+    water_open(&w, v3(-3.0f, -1.0f, -3.0f), v3(3.0f, -1.0f, 3.0f), -0.5f,
+               0.5f);
+    water_spout(&w, v3(0.0f, 1.6f, 0.0f), 3.0f);
+    for (i = 0; i < 150; i++) {
+        water_step(&w, 1.0f / 60.0f);
+    }
+    quiet = w;
+    quiet.steam_n = 0;
+
+    cam.pos = v3(0.0f, 1.6f, 7.0f);
+    cam.yaw = 3.14159265f;
+    cam.pitch = 0.0f;
+    cam.fov = 1.05f;
+
+    render_grid(&s, &w, &cam, ca, ia);
+    render_grid(&s, &quiet, &cam, cb, ib);
+    check(!grids_same(ca, ia, cb, ib),
+          "clear of a wall, the steam shows", NULL);
+
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 3.5f, 3.5f);
+    o->half = v3(6.0f, 6.0f, 0.2f);
+    o->ink = RGB(90, 90, 90);
+
+    render_grid(&s, &w, &cam, ca, ia);
+    render_grid(&s, &quiet, &cam, cb, ib);
+    check(grids_same(ca, ia, cb, ib),
+          "a wall keeps the steam out of sight", NULL);
+
+    water_close(&w);
+}
+
 static int read_golden(const char *path, unsigned *want)
 {
     FILE *f = fopen(path, "rb");
@@ -304,6 +397,7 @@ int main(int argc, char **argv)
     tile_checks();
     yaw_checks();
     shadow_checks();
+    steam_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {
