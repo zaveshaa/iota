@@ -47,15 +47,14 @@ static unsigned byte_of(float x)
     return (unsigned)(clamp01(x) * 255.0f + 0.5f);
 }
 
+static float smoothstep01(float e0, float e1, float x);
+
 static float fog_factor(const Scene *s, float t)
 {
-    float f;
-
     if (s->fog_range <= 0.0f) {
         return 0.0f;
     }
-    f = (t - s->fog_start) / s->fog_range;
-    return clamp01(f);
+    return smoothstep01(s->fog_start, s->fog_start + s->fog_range, t);
 }
 
 static Vec3 mix(Vec3 a, Vec3 b, float f)
@@ -170,13 +169,18 @@ static float star_field(Vec3 dir)
     return 0.0f;
 }
 
-static Vec3 sky_color(const Scene *s, Vec3 dir)
+static Vec3 sky_gradient(const Scene *s, Vec3 dir)
 {
     float t = clamp01(dir.y);
-    Vec3 c;
 
     t *= t;
-    c = mix(rgb_vec(s->sky_horizon), rgb_vec(s->sky_top), t);
+    return mix(rgb_vec(s->sky_horizon), rgb_vec(s->sky_top), t);
+}
+
+static Vec3 sky_color(const Scene *s, Vec3 dir)
+{
+    Vec3 c = sky_gradient(s, dir);
+
     if (s->have_moon) {
         Vec3 md = v3_norm(s->sky_moon_dir);
         float cd = v3_dot(dir, md);
@@ -204,6 +208,16 @@ static Vec3 sky_color(const Scene *s, Vec3 dir)
         }
     }
     return c;
+}
+
+// distance haze drifts from the level's fog colour toward the sky the ray
+// points at, so far ground melts into the horizon instead of a flat wall
+static Vec3 fogged(const Ctx *cx, Vec3 col, Vec3 dir, float t)
+{
+    float f = fog_factor(cx->s, t);
+    Vec3 haze = mix(cx->fog, sky_gradient(cx->s, dir), f);
+
+    return mix(col, haze, f);
 }
 
 #define TILE_SIZE 0.8f
@@ -302,11 +316,10 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
                 Vec3 behind = sky_color(cx->s, dir);
 
                 if (h.action != HIT_NONE && h.obj != NULL) {
-                    behind = mix(shade(cx->s, cx->ms, &h), cx->fog,
-                                 fog_factor(cx->s, h.t));
+                    behind = fogged(cx, shade(cx->s, cx->ms, &h), dir, h.t);
                 }
-                return mix(mix(behind, water_color(wa, dir), opacity),
-                           cx->fog, fog_factor(cx->s, wt));
+                return fogged(cx, mix(behind, water_color(wa, dir), opacity),
+                              dir, wt);
             }
         }
     }
@@ -318,12 +331,12 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         Vec3 ro = v3_add(h.point, v3_mul(h.normal, 2e-3f));
 
         col = trace(cx, ro, rd, depth + 1);
-        return mix(col, cx->fog, fog_factor(cx->s, h.t));
+        return fogged(cx, col, dir, h.t);
     }
     if (h.action == HIT_MIRROR) {
         return cx->fog;
     }
-    col = mix(shade(cx->s, cx->ms, &h), cx->fog, fog_factor(cx->s, h.t));
+    col = fogged(cx, shade(cx->s, cx->ms, &h), dir, h.t);
     if (h.action == HIT_TILE) {
         if (on_grout(h.point, h.normal)) {
             col = v3_mul(col, 0.18f);
