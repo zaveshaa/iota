@@ -24,6 +24,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   so a pillar or a roof lays its shade on what it stands over.
 - Fog pulls distant surfaces toward the sky colour along the view direction,
   so the ground slips into the horizon cleanly, with a smoother ramp in.
+- Steam leaves a pool as soft drifting clouds: each puff swells and thins as
+  it rises, and where it is faint its colour only drifts over what is behind
+  it, instead of a thin string of single specks.
 
 ### Changed
 
@@ -33,8 +36,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   stands on the box's top.
 - The jump is a little stronger, so the range's pillars are low enough to hop
   onto and the walk flows over them instead of into a wall.
-- The test range hangs a moon and feeds its pit from several springs, so the
-  walk shows the sky, the stars, the steam and the shadows together.
+- The test range hangs a moon, feeds its pit from several springs and starts
+  the body at the pool's rim, so the walk opens on the sky, the stars, the
+  rising steam and the shadows at once.
 
 ### Fixed
 

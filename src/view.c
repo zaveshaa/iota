@@ -275,6 +275,88 @@ static void plot_point(Render *r, Vec3 p, Vec3 eye, Vec3 fwd, Vec3 rt, Vec3 up,
     render_put(r, cx, cy, ch, ink);
 }
 
+static unsigned mix_ink(unsigned a, unsigned b, float f)
+{
+    unsigned ar = (a >> 16) & 0xffu;
+    unsigned ag = (a >> 8) & 0xffu;
+    unsigned ab = a & 0xffu;
+    unsigned br = (b >> 16) & 0xffu;
+    unsigned bg = (b >> 8) & 0xffu;
+    unsigned bb = b & 0xffu;
+    unsigned rr = (unsigned)((float)ar + ((float)br - (float)ar) * f + 0.5f);
+    unsigned rg = (unsigned)((float)ag + ((float)bg - (float)ag) * f + 0.5f);
+    unsigned rb = (unsigned)((float)ab + ((float)bb - (float)ab) * f + 0.5f);
+
+    return (rr << 16) | (rg << 8) | rb;
+}
+
+// a puff of steam is a soft disc: it thins toward its rim and, where it is
+// faint, only a wisp of its colour drifts over whatever the ray already drew
+static void steam_cloud(Render *r, const Steam *p, Vec3 eye, Vec3 fwd, Vec3 rt,
+                        Vec3 up, float tan_half, float aspect, int cols,
+                        int rows, float alpha)
+{
+    static const char ramp[] = ".:~*oO%@";
+    unsigned steam_ink = RGB(196, 208, 226);
+    Vec3 rel = v3_sub(p->p, eye);
+    float z = v3_dot(rel, fwd);
+    float xr;
+    float yu;
+    float pr;
+    int cx;
+    int cy;
+    int rad;
+    int dx;
+    int dy;
+    int last = (int)(sizeof ramp - 2);
+
+    if (z <= 0.05f) {
+        return;
+    }
+    xr = v3_dot(rel, rt) / (z * aspect * tan_half);
+    yu = v3_dot(rel, up) / (z * tan_half);
+    pr = p->radius / (z * tan_half) * ((float)rows * 0.5f);
+    cx = (int)((xr + 1.0f) * 0.5f * (float)cols);
+    cy = (int)((1.0f - yu) * 0.5f * (float)rows);
+    rad = (int)(pr + 0.5f);
+    if (rad < 1) {
+        rad = 1;
+    }
+    if (rad > 48) {
+        rad = 48;
+    }
+    for (dy = -rad; dy <= rad; dy++) {
+        for (dx = -rad; dx <= rad; dx++) {
+            float d = sqrtf((float)(dx * dx + dy * dy));
+            float edge;
+            float dens;
+            float blend;
+            int gx = cx + dx;
+            int gy = cy + dy;
+            int gi;
+
+            if (gx < 0 || gy < 0 || gx >= cols || gy >= rows || d > pr) {
+                continue;
+            }
+            edge = 1.0f - d / (pr + 1e-3f);
+            dens = alpha * edge * edge;
+            if (dens < 0.05f) {
+                continue;
+            }
+            gi = (int)(dens * (float)last);
+            if (gi < 0) {
+                gi = 0;
+            }
+            if (gi > last) {
+                gi = last;
+            }
+            blend = dens > 0.75f ? 0.75f : dens;
+            render_put(r, gx, gy, (unsigned char)ramp[gi],
+                       mix_ink(render_ink(r, gx, gy), steam_ink, blend));
+        }
+    }
+}
+
 static Vec3 water_color(float amp, Vec3 dir)
 {
     float ndv = clamp01(fabsf(dir.y));
@@ -508,21 +590,16 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
         }
         for (k = 0; k < w->steam_n; k++) {
             const Steam *puff = &w->steam[k];
-            float f = puff->life / puff->span;
-            unsigned char ch;
-            unsigned ink;
-            int v;
+            float age = 1.0f - puff->life / puff->span;
+            float fin = clamp01(age / 0.2f);
+            float fout = clamp01((1.0f - age) / 0.5f);
+            float alpha = 0.85f * fin * fout;
 
-            if (f < 0.18f) {
+            if (alpha < 0.05f) {
                 continue;
             }
-            ch = f > 0.6f ? (unsigned char)'`'
-                          : (f > 0.35f ? (unsigned char)'.'
-                                       : (unsigned char)',');
-            v = (int)(255.0f * (0.35f + 0.65f * f));
-            ink = RGB(v * 190 / 255, v * 214 / 255, v * 245 / 255);
-            plot_point(r, puff->p, cam->pos, forward, right, up, tan_half,
-                       aspect, cols, rows, ch, ink);
+            steam_cloud(r, puff, cam->pos, forward, right, up, tan_half,
+                        aspect, cols, rows, alpha);
         }
     }
 }

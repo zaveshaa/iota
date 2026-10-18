@@ -11,6 +11,7 @@ typedef struct {
     Vec3 v;
     float life;
     float span;
+    float radius;
 } Steam;
 
 // a pipe or spring feeding the pool: where its mouth sits above the water and
