@@ -33,6 +33,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   stands on the box's top.
 - The jump is a little stronger, so the range's pillars are low enough to hop
   onto and the walk flows over them instead of into a wall.
+- The test range hangs a moon and feeds its pit from several springs, so the
+  walk shows the sky, the stars, the steam and the shadows together.
 
 ### Fixed
 
