@@ -55,6 +55,10 @@ static void round_trip(void)
     a.water.spouts[1].top = v3(1.5f, 1.6f, -0.5f);
     a.water.spouts[1].rate = 0.7f;
     a.water.spout_count = 2;
+    a.have_moon = 1;
+    a.sky_moon_dir = v3(0.3f, 0.55f, 0.8f);
+    a.sky_moon = RGB(232, 236, 255);
+    a.sky_moon_size = 0.06f;
 
     check(level_save(&a, "leveltest.lvl") == 0, "a scene writes to a file");
     check(level_load(&b, "leveltest.lvl") == 0, "a scene reads back");
@@ -76,6 +80,9 @@ static void round_trip(void)
     check(b.water.spout_count == 2 && b.water.spouts[1].top.x == 1.5f &&
               b.water.spouts[0].rate == 1.1f,
           "a pool keeps the springs that feed it");
+    check(b.have_moon && b.sky_moon_dir.z == 0.8f &&
+              b.sky_moon == RGB(232, 236, 255) && b.sky_moon_size == 0.06f,
+          "the sky keeps its moon where it hangs");
     (void)remove("leveltest.lvl");
 }
 

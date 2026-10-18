@@ -63,6 +63,10 @@ typedef struct {
     float fog_range;
     unsigned sky_top;
     unsigned sky_horizon;
+    Vec3 sky_moon_dir;
+    unsigned sky_moon;
+    float sky_moon_size;
+    int have_moon;
     Vec3 spawn;
     int have_spawn;
     WaterSpec water;

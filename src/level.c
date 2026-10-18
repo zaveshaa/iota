@@ -93,8 +93,14 @@ int level_save(const Scene *s, const char *path)
     (void)fprintf(f, "ambient %06x\n", s->ambient & 0xffffffu);
     (void)fprintf(f, "fog %06x %g %g\n", s->fog & 0xffffffu,
                   (double)s->fog_start, (double)s->fog_range);
-    (void)fprintf(f, "sky %06x %06x\n", s->sky_top & 0xffffffu,
+    (void)fprintf(f, "sky %06x %06x", s->sky_top & 0xffffffu,
                   s->sky_horizon & 0xffffffu);
+    if (s->have_moon) {
+        (void)fprintf(f, " %g %g %g %06x %g", (double)s->sky_moon_dir.x,
+                      (double)s->sky_moon_dir.y, (double)s->sky_moon_dir.z,
+                      s->sky_moon & 0xffffffu, (double)s->sky_moon_size);
+    }
+    (void)fprintf(f, "\n");
     if (s->have_water) {
         (void)fprintf(f, "water %g %g %g %g %g %g\n", (double)s->water.lo.x,
                       (double)s->water.lo.z, (double)s->water.hi.x,
@@ -164,6 +170,12 @@ int level_load(Scene *s, const char *path)
         } else if (strcmp(tok[0], "sky") == 0 && n >= 3) {
             s->sky_top = tx(tok[1]);
             s->sky_horizon = tx(tok[2]);
+            if (n >= 8) {
+                s->sky_moon_dir = v3(tf(tok[3]), tf(tok[4]), tf(tok[5]));
+                s->sky_moon = tx(tok[6]);
+                s->sky_moon_size = tf(tok[7]);
+                s->have_moon = 1;
+            }
         } else if (strcmp(tok[0], "water") == 0 && n >= 7) {
             s->water.lo = v3(tf(tok[1]), 0.0f, tf(tok[2]));
             s->water.hi = v3(tf(tok[3]), 0.0f, tf(tok[4]));
