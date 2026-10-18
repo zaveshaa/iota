@@ -27,8 +27,9 @@ and what to do next: shade it, bounce it off a mirror, or let it go into the
 fog. The terminal, the cell grid, the ray caster, the frame loop and the
 fixed step are the engine's; the scene is the client's.
 
-This repository carries three scenes: a mirror on a wall, a test range with
-stairs and crates to walk around in, and a level editor that flies and places
+This repository carries three scenes: a mirror on a wall, a test range that
+hangs a moon and feeds a steaming pool so the sky, the water and the shadows
+show together as you walk it, and a level editor that flies and places
 panels. The engine's body is a walking model in
 the Quake line — ground friction, air control, a jump and a step it takes
 without being asked. More scenes — portals, soft shadows, dialogue — follow the
