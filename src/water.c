@@ -178,15 +178,15 @@ static void steam_spawn(Water *w, const Spout *sp)
     }
     s = &w->steam[w->steam_n];
     w->steam_n++;
-    s->p = v3(sp->top.x + (rng_unit(&w->rng) - 0.5f) * 0.9f,
-              water_surface(w, sp->top.x, sp->top.z) + 0.15f,
-              sp->top.z + (rng_unit(&w->rng) - 0.5f) * 0.9f);
-    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.3f,
-              0.45f + rng_unit(&w->rng) * 0.45f,
-              (rng_unit(&w->rng) - 0.5f) * 0.3f);
-    s->span = 1.6f + rng_unit(&w->rng) * 1.2f;
+    s->p = v3(sp->top.x + (rng_unit(&w->rng) - 0.5f) * 0.7f,
+              water_surface(w, sp->top.x, sp->top.z) + 0.1f,
+              sp->top.z + (rng_unit(&w->rng) - 0.5f) * 0.7f);
+    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.16f,
+              0.4f + rng_unit(&w->rng) * 0.25f,
+              (rng_unit(&w->rng) - 0.5f) * 0.16f);
+    s->span = 2.4f + rng_unit(&w->rng) * 1.6f;
     s->life = s->span;
-    s->radius = 0.38f + rng_unit(&w->rng) * 0.28f;
+    s->radius = 0.5f + rng_unit(&w->rng) * 0.35f;
     s->seed = w->rng;
 }
 
@@ -204,9 +204,8 @@ static void steam_step(Water *w, float dt)
             continue;
         }
         s->p = v3_add(s->p, v3_mul(s->v, dt));
-        s->radius += (0.35f + 0.55f * s->radius) * dt;
-        s->v.x *= 1.0f - 0.9f * dt;
-        s->v.z *= 1.0f - 0.9f * dt;
+        s->v.x *= 1.0f - 0.25f * dt;
+        s->v.z *= 1.0f - 0.25f * dt;
         i++;
     }
 }
@@ -235,11 +234,11 @@ void water_step(Water *w, float dt)
     w->t += dt;
     for (k = 0; k < w->spout_n; k++) {
         Spout *sp = &w->spouts[k];
-        float pulse = 0.7f + 0.3f * sinf(w->t * 6.5f + (float)k * 1.7f);
+        float pulse = 0.92f + 0.08f * sinf(w->t * 6.5f + (float)k * 1.7f);
 
         add_ripple(w, sp->top.x, sp->top.z, 0.32f,
                    (0.9f + 0.3f * pulse) * sp->rate * dt);
-        sp->spawn_acc += sp->rate * dt * 6.0f;
+        sp->spawn_acc += sp->rate * dt * 14.0f;
         while (sp->spawn_acc >= 1.0f) {
             sp->spawn_acc -= 1.0f;
             steam_spawn(w, sp);

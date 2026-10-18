@@ -3,7 +3,7 @@
 
 #include "vec3.h"
 
-#define WATER_STEAM_MAX 64
+#define WATER_STEAM_MAX 96
 #define WATER_SPOUT_MAX 6
 
 typedef struct {

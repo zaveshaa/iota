@@ -170,10 +170,10 @@ pool, shading the first place the density turns to water: the surface shows
 the ripples and the splash throws up a spray.
 
 Steam is drawn after the rays, but the frame remembers how far each ray
-reached, so a puff or spring jet only paints the cells where it stands in
-front of the surface — a wall in the way keeps it out. A puff is a handful of
-soft lobes keyed off its seed, so it reads as a lumpy cloud rather than a
-disc.
+reached, so a mote or spring jet only paints the cells where it stands in
+front of the surface — a wall in the way keeps it out. Each puff is one small
+soft mote that rises, thins toward its rim and fades, never getting thick, so
+a drift of them reads as translucent steam rather than a solid mass.
 
 ## Layout
 
