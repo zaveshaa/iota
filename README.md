@@ -147,7 +147,8 @@ One ray per cell at the base sample, nearest hit kept, so thin geometry
 survives and objects occlude the floor and each other. A surface is shaded
 by the scene's lights — ambient plus every point and sun light that reaches
 it, with a shadow ray cast per light so anything in the way withholds its
-share — and fog takes over with distance. A ray that meets nothing gets the sky:
+share — and fog takes over with distance, pulling distant surfaces toward the sky the
+ray looks at so the horizon joins without a hard seam and the ramp eases in. A ray that meets nothing gets the sky:
 a top-to-horizon gradient, a field of stars, and the moon the scene hangs.
 
 A hit carries an action. A plain surface is shaded and done; a mirror

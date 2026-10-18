@@ -22,6 +22,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `sky` line takes the moon's direction, colour and size.
 - Light stops at the first surface in its way: each light casts a shadow ray,
   so a pillar or a roof lays its shade on what it stands over.
+- Fog pulls distant surfaces toward the sky colour along the view direction,
+  so the ground slips into the horizon cleanly, with a smoother ramp in.
 
 ### Changed
 
