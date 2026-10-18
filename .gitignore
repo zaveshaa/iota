@@ -1,10 +1,13 @@
 # the programs, built in the place they are built
 /iota
+/editor
 /golden
 /walk
 /walktest
 /meshtest
 /watertest
+/leveltest
+/uitest
 *.o
 
 # macOS
