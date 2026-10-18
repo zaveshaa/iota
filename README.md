@@ -180,10 +180,10 @@ Steam is drawn after the rays, but the frame remembers how far each ray
 reached, so a mote or spring jet only paints the cells where it stands in
 front of the surface — a wall in the way keeps it out. A hot pool breathes
 steam from across its whole surface: each puff is a small cluster of lobes,
-so it reads as a rounded but irregular wisp that rises far and lives about a
-minute before it thins and fades, never getting thick, so a drift of them
-reads as translucent steam rather than a solid mass. A cold pool steams
-nowhere.
+so it reads as a rounded but irregular wisp that drifts gently and dissolves
+smoothly after a few seconds, never getting thick, so a drift of them reads
+as a calm translucent haze rather than a solid mass or a rising column. A
+cold pool steams nowhere.
 
 ## Layout
 
