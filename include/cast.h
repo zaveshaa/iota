@@ -8,7 +8,8 @@ typedef enum {
     HIT_CONTINUE,
     HIT_MIRROR,
     HIT_TILE,
-    HIT_SHOJI
+    HIT_SHOJI,
+    HIT_GLASS
 } HitAction;
 
 typedef struct {

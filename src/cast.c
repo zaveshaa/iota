@@ -170,6 +170,8 @@ Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
             best.action = HIT_TILE;
         } else if ((o->flags & OBJ_SHOJI) != 0u) {
             best.action = HIT_SHOJI;
+        } else if ((o->flags & OBJ_GLASS) != 0u) {
+            best.action = HIT_GLASS;
         } else {
             best.action = HIT_CONTINUE;
         }

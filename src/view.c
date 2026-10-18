@@ -287,6 +287,50 @@ static int on_shoji_bar(Vec3 p, Vec3 n)
            fv > 1.0f - SHOJI_BAR;
 }
 
+#define GLASS_FRESNEL 0.10f
+#define GLASS_SHININESS 48.0f
+
+// a bright point where a lamp mirrors off a smooth face, so glass catches a
+// glint. dir is the ray's own direction, so the halfway vector leans against
+// it toward the eye.
+static Vec3 specular(const Scene *s, const Hit *h, Vec3 dir)
+{
+    Vec3 acc = v3(0.0f, 0.0f, 0.0f);
+    int i;
+
+    for (i = 0; i < s->light_count; i++) {
+        const Light *l = &s->lights[i];
+        Vec3 ld;
+        Vec3 halfway;
+        float atten = 1.0f;
+        float ndoth;
+
+        if (l->kind != LIGHT_POINT) {
+            continue;
+        }
+        {
+            Vec3 to = v3_sub(l->pos, h->point);
+            float dist = v3_len(to);
+
+            if (dist <= 1e-3f) {
+                continue;
+            }
+            ld = v3_mul(to, 1.0f / dist);
+            atten = 1.0f / (1.0f + 0.04f * dist * dist);
+        }
+        halfway = v3_norm(v3_sub(ld, dir));
+        ndoth = v3_dot(h->normal, halfway);
+        if (ndoth <= 0.0f) {
+            continue;
+        }
+        acc = v3_add(acc,
+                     v3_mul(l->color,
+                            l->intensity * atten *
+                                powf(ndoth, GLASS_SHININESS)));
+    }
+    return acc;
+}
+
 static void plot_point(Render *r, const float *zbuf, Vec3 p, Vec3 eye, Vec3 fwd,
                        Vec3 rt, Vec3 up, float tan_half, float aspect, int cols,
                        int rows, unsigned char ch, unsigned ink)
@@ -541,6 +585,25 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth, float *z_out)
             lit = mix(lit, through, SHOJI_SEETHROUGH);
         }
         return fogged(cx, lit, dir, h.t);
+    }
+    if (h.action == HIT_GLASS) {
+        Vec3 tint = rgb_vec(h.obj->ink);
+        float ndv = fabsf(v3_dot(h.normal, dir));
+        float fres = GLASS_FRESNEL + (1.0f - GLASS_FRESNEL) *
+                                         (1.0f - ndv) * (1.0f - ndv);
+        Vec3 sheen = v3_add(v3_mul(shade(cx->s, cx->ms, &h), 0.5f),
+                            specular(cx->s, &h, dir));
+        Vec3 through;
+
+        if (depth < VIEW_MAX_DEPTH) {
+            Vec3 ro = v3_add(h.point, v3_mul(dir, 2e-2f));
+
+            through = v3_had(trace(cx, ro, dir, depth + 1, NULL), tint);
+        } else {
+            through = v3_had(cx->fog, tint);
+        }
+        col = mix(through, sheen, fres);
+        return fogged(cx, col, dir, h.t);
     }
     col = fogged(cx, shade(cx->s, cx->ms, &h), dir, h.t);
     if (h.action == HIT_TILE) {

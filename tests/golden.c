@@ -431,6 +431,48 @@ static void shoji_checks(void)
           "a plain wall keeps what stands behind it out of sight", NULL);
 }
 
+static void glass_checks(void)
+{
+    Scene s;
+    Camera cam;
+    Obj *o;
+    Light *l;
+    float glass_lum;
+    float wall_lum;
+
+    scene_clear(&s);
+    s.ambient = RGB(16, 20, 28);
+    cam.pos = v3(0.0f, 1.6f, -4.0f);
+    cam.yaw = 0.0f;
+    cam.pitch = 0.0f;
+    cam.fov = 1.05f;
+
+    // a glass pane with a lit wall behind it: the light passes through
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 1.6f, 0.0f);
+    o->half = v3(12.0f, 8.0f, 0.15f);
+    o->ink = RGB(136, 204, 238);
+    o->flags = OBJ_GLASS;
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 1.6f, 3.0f);
+    o->half = v3(12.0f, 8.0f, 0.4f);
+    o->ink = RGB(48, 80, 160);
+    l = scene_add_light(&s);
+    l->kind = LIGHT_POINT;
+    l->pos = v3(0.0f, 1.6f, 1.5f);
+    l->color = v3(0.7f, 0.85f, 1.0f);
+    l->intensity = 9.0f;
+    glass_lum = frame_lum(&s, &cam);
+
+    // the same pane as a plain wall keeps the light behind out of sight
+    s.objs[0].flags = 0u;
+    wall_lum = frame_lum(&s, &cam);
+    check(glass_lum > wall_lum * 1.5f,
+          "a glass pane lets the light behind it through", NULL);
+}
+
 int main(int argc, char **argv)
 {
     static unsigned want[GOLD_COLS * GOLD_ROWS];
@@ -454,6 +496,7 @@ int main(int argc, char **argv)
     shadow_checks();
     steam_checks();
     shoji_checks();
+    glass_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {

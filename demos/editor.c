@@ -72,7 +72,8 @@ static const Material MATS[] = {
     {"wall", RGB(150, 150, 152), 0u},
     {"tile", RGB(96, 100, 116), OBJ_TILE},
     {"mirror", RGB(84, 92, 112), OBJ_MIRROR},
-    {"shoji", RGB(224, 214, 192), OBJ_SHOJI}
+    {"shoji", RGB(224, 214, 192), OBJ_SHOJI},
+    {"glass", RGB(176, 208, 220), OBJ_GLASS}
 };
 
 #define MAT_COUNT ((int)(sizeof MATS / sizeof MATS[0]))
