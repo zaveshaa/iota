@@ -1213,6 +1213,33 @@ static void draw_panel(App *a)
             erase_at(a, a->sel);
         }
         r++;
+        {
+            float cr = (float)((o->ink >> 16) & 0xffu);
+            float cg = (float)((o->ink >> 8) & 0xffu);
+            float cb = (float)(o->ink & 0xffu);
+            int ch = 0;
+
+            ui_label(ui, c, r++, "colour", RGB(214, 232, 255));
+            ch |= ui_step(ui, 410, c, r++, w - 4, "red", &cr, 1.0f, 0.0f,
+                          255.0f, 0);
+            ch |= ui_step(ui, 411, c, r++, w - 4, "grn", &cg, 1.0f, 0.0f,
+                          255.0f, 0);
+            ch |= ui_step(ui, 412, c, r++, w - 4, "blu", &cb, 1.0f, 0.0f,
+                          255.0f, 0);
+            if (ch != 0) {
+                o->ink = ((unsigned)(cr + 0.5f) & 0xffu) << 16 |
+                         ((unsigned)(cg + 0.5f) & 0xffu) << 8 |
+                         ((unsigned)(cb + 0.5f) & 0xffu);
+            }
+            {
+                int sx;
+
+                for (sx = 0; sx < w - 4; sx++) {
+                    render_put(ui->r, c + sx, r, (unsigned char)'=', o->ink);
+                }
+            }
+            r++;
+        }
     } else if (a->sel_light >= 0 && a->sel_light < a->scene.light_count) {
         Light *l = &a->scene.lights[a->sel_light];
 
