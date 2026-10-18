@@ -12,6 +12,7 @@ typedef struct {
     float life;
     float span;
     float radius;
+    unsigned seed;
 } Steam;
 
 // a pipe or spring feeding the pool: where its mouth sits above the water and

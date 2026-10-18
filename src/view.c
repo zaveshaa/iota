@@ -251,9 +251,9 @@ static int on_grout(Vec3 p, Vec3 n)
     return fu < edge || fu > 1.0f - edge || fv < edge || fv > 1.0f - edge;
 }
 
-static void plot_point(Render *r, Vec3 p, Vec3 eye, Vec3 fwd, Vec3 rt, Vec3 up,
-                       float tan_half, float aspect, int cols, int rows,
-                       unsigned char ch, unsigned ink)
+static void plot_point(Render *r, const float *zbuf, Vec3 p, Vec3 eye, Vec3 fwd,
+                       Vec3 rt, Vec3 up, float tan_half, float aspect, int cols,
+                       int rows, unsigned char ch, unsigned ink)
 {
     Vec3 rel = v3_sub(p, eye);
     float z = v3_dot(rel, fwd);
@@ -272,6 +272,12 @@ static void plot_point(Render *r, Vec3 p, Vec3 eye, Vec3 fwd, Vec3 rt, Vec3 up,
     }
     cx = (int)((xr + 1.0f) * 0.5f * (float)cols);
     cy = (int)((1.0f - yu) * 0.5f * (float)rows);
+    if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) {
+        return;
+    }
+    if (z > zbuf[(size_t)cy * (size_t)cols + (size_t)cx] + 0.1f) {
+        return;
+    }
     render_put(r, cx, cy, ch, ink);
 }
 
@@ -290,56 +296,103 @@ static unsigned mix_ink(unsigned a, unsigned b, float f)
     return (rr << 16) | (rg << 8) | rb;
 }
 
-// a puff of steam is a soft disc: it thins toward its rim and, where it is
-// faint, only a wisp of its colour drifts over whatever the ray already drew
-static void steam_cloud(Render *r, const Steam *p, Vec3 eye, Vec3 fwd, Vec3 rt,
-                        Vec3 up, float tan_half, float aspect, int cols,
-                        int rows, float alpha)
+#define STEAM_LOBES 5
+
+// a puff of steam is a little cluster of soft lobes laid in the plane that
+// faces the eye, their offsets and sizes drawn from the puff's seed, so the
+// outline is lumpy the way a cloud is rather than a bare ball. Anything a
+// nearer surface hides is skipped, and where the puff is thin only a wisp of
+// its colour drifts over whatever the ray already drew.
+static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
+                        Vec3 fwd, Vec3 rt, Vec3 up, float tan_half, float aspect,
+                        int cols, int rows, float alpha)
 {
     static const char ramp[] = ".:~*oO%@";
     unsigned steam_ink = RGB(196, 208, 226);
     Vec3 rel = v3_sub(p->p, eye);
     float z = v3_dot(rel, fwd);
-    float xr;
-    float yu;
+    float xrp;
+    float yup;
     float pr;
     int cx;
     int cy;
     int rad;
     int dx;
     int dy;
+    int l;
     int last = (int)(sizeof ramp - 2);
+    float lobe[STEAM_LOBES][3];
+    unsigned h;
 
     if (z <= 0.05f) {
         return;
     }
-    xr = v3_dot(rel, rt) / (z * aspect * tan_half);
-    yu = v3_dot(rel, up) / (z * tan_half);
+    xrp = v3_dot(rel, rt) / (z * aspect * tan_half);
+    yup = v3_dot(rel, up) / (z * tan_half);
     pr = p->radius / (z * tan_half) * ((float)rows * 0.5f);
-    cx = (int)((xr + 1.0f) * 0.5f * (float)cols);
-    cy = (int)((1.0f - yu) * 0.5f * (float)rows);
-    rad = (int)(pr + 0.5f);
+    cx = (int)((xrp + 1.0f) * 0.5f * (float)cols);
+    cy = (int)((1.0f - yup) * 0.5f * (float)rows);
+
+    h = hash_u(p->seed | 1u);
+    for (l = 0; l < STEAM_LOBES; l++) {
+        h = hash_u(h + 0x9e3779b9u);
+        lobe[l][0] = ((float)((h >> 8) & 0xffu) / 255.0f - 0.5f) *
+                     p->radius * 1.25f;
+        lobe[l][1] = ((float)((h >> 16) & 0xffu) / 255.0f - 0.5f) *
+                     p->radius * 1.05f;
+        lobe[l][2] = p->radius * (0.45f +
+                    0.30f * (float)((h >> 24) & 0xffu) / 255.0f);
+    }
+
+    rad = (int)(pr * 1.7f + 0.5f);
     if (rad < 1) {
         rad = 1;
     }
-    if (rad > 48) {
-        rad = 48;
+    if (rad > 36) {
+        rad = 36;
     }
     for (dy = -rad; dy <= rad; dy++) {
         for (dx = -rad; dx <= rad; dx++) {
-            float d = sqrtf((float)(dx * dx + dy * dy));
-            float edge;
-            float dens;
-            float blend;
             int gx = cx + dx;
             int gy = cy + dy;
+            float xr;
+            float yu;
+            Vec3 rd;
+            float s;
+            float ox;
+            float oy;
+            float dens = 0.0f;
+            float blend;
             int gi;
 
-            if (gx < 0 || gy < 0 || gx >= cols || gy >= rows || d > pr) {
+            if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) {
                 continue;
             }
-            edge = 1.0f - d / (pr + 1e-3f);
-            dens = alpha * edge * edge;
+            xr = (2.0f * ((float)gx + 0.5f) / (float)cols - 1.0f) *
+                 aspect * tan_half;
+            yu = (1.0f - 2.0f * ((float)gy + 0.5f) / (float)rows) * tan_half;
+            rd = v3_norm(v3_add(fwd, v3_add(v3_mul(rt, xr),
+                                           v3_mul(up, yu))));
+            s = z / v3_dot(rd, fwd);
+            if (s > zbuf[(size_t)gy * (size_t)cols + (size_t)gx] + 0.1f) {
+                continue;
+            }
+            ox = v3_dot(rd, rt) * s;
+            oy = v3_dot(rd, up) * s;
+            for (l = 0; l < STEAM_LOBES; l++) {
+                float ddx = ox - lobe[l][0];
+                float ddy = oy - lobe[l][1];
+                float rr = lobe[l][2];
+                float w = 1.0f - (ddx * ddx + ddy * ddy) / (rr * rr);
+
+                if (w > 0.0f) {
+                    dens += w * w;
+                }
+            }
+            dens *= alpha;
+            if (dens > 1.0f) {
+                dens = 1.0f;
+            }
             if (dens < 0.05f) {
                 continue;
             }
@@ -373,7 +426,7 @@ static Vec3 water_color(float amp, Vec3 dir)
     }
 }
 
-static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
+static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth, float *z_out)
 {
     Hit h;
     Vec3 col;
@@ -387,12 +440,18 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         cx->st->depth_max = depth;
     }
     h = cast_ray(cx->s, cx->ms, origin, dir, 1e9f);
+    if (depth == 0 && z_out != NULL) {
+        *z_out = h.action == HIT_NONE ? 1e9f : h.t;
+    }
     if (cx->w != NULL) {
         float ndv;
 
         wp = water_cast(cx->w, origin, dir, h.t, &wt, &wn, &wa);
         if (wp >= 0) {
             ndv = clamp01(fabsf(dir.y));
+            if (depth == 0 && z_out != NULL) {
+                *z_out = wt;
+            }
             {
                 float opacity = clamp01(0.55f + 0.20f * (1.0f - ndv));
                 Vec3 behind = sky_color(cx->s, dir);
@@ -412,7 +471,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         Vec3 rd = v3_norm(v3_reflect(dir, h.normal));
         Vec3 ro = v3_add(h.point, v3_mul(h.normal, 2e-3f));
 
-        col = trace(cx, ro, rd, depth + 1);
+        col = trace(cx, ro, rd, depth + 1, NULL);
         return fogged(cx, col, dir, h.t);
     }
     if (h.action == HIT_MIRROR) {
@@ -425,7 +484,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
         } else if (depth < VIEW_MAX_DEPTH) {
             Vec3 rd = v3_norm(v3_reflect(dir, h.normal));
             Vec3 ro = v3_add(h.point, v3_mul(h.normal, 2e-3f));
-            Vec3 refl = trace(cx, ro, rd, depth + 1);
+            Vec3 refl = trace(cx, ro, rd, depth + 1, NULL);
 
             col = mix(col, refl, TILE_REFLECT);
         }
@@ -439,6 +498,8 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
 {
     static Vec3 *buf;
     static size_t cap;
+    static float *zbuf;
+    static size_t zcap;
     static int *plev;
     static size_t pcap;
     int cols = render_cols(r);
@@ -488,12 +549,24 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
         plev = np;
         pcap = need;
     }
+    if ((size_t)(cols * rows) > zcap) {
+        float *nz = malloc((size_t)(cols * rows) * sizeof *nz);
+
+        if (nz == NULL) {
+            return;
+        }
+        zbuf = nz;
+        zcap = (size_t)(cols * rows);
+    }
     st->rays = 0u;
     st->depth_max = 0;
     st->budget_hit = 0;
 
     for (i = 0; i < need; i++) {
         buf[i] = fogv;
+    }
+    for (i = 0; i < (size_t)(cols * rows); i++) {
+        zbuf[i] = 1e9f;
     }
 
     cp = cosf(cam->pitch);
@@ -519,9 +592,15 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
             Vec3 dir = v3_norm(v3_add(forward,
                                       v3_add(v3_mul(right, px),
                                              v3_mul(up, py))));
+            float zd = 1e9f;
+            size_t oi = (size_t)(y / ss) * (size_t)cols +
+                        (size_t)(x / ss);
 
             buf[(size_t)y * (size_t)wsize + (size_t)x] =
-                trace(&cx, cam->pos, dir, 0);
+                trace(&cx, cam->pos, dir, 0, &zd);
+            if (zd < zbuf[oi]) {
+                zbuf[oi] = zd;
+            }
         }
     }
     st->budget_hit = budget_ms > 0.0f &&
@@ -584,7 +663,7 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
                 Vec3 p = v3(sp->top.x, sp->top.y + (sy - sp->top.y) * f,
                             sp->top.z);
 
-                plot_point(r, p, cam->pos, forward, right, up, tan_half,
+                plot_point(r, zbuf, p, cam->pos, forward, right, up, tan_half,
                            aspect, cols, rows, (unsigned char)'|', ink);
             }
         }
@@ -598,7 +677,7 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
             if (alpha < 0.05f) {
                 continue;
             }
-            steam_cloud(r, puff, cam->pos, forward, right, up, tan_half,
+            steam_cloud(r, zbuf, puff, cam->pos, forward, right, up, tan_half,
                         aspect, cols, rows, alpha);
         }
     }

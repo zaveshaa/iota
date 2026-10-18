@@ -27,6 +27,9 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Steam leaves a pool as soft drifting clouds: each puff swells and thins as
   it rises, and where it is faint its colour only drifts over what is behind
   it, instead of a thin string of single specks.
+- A puff is a cluster of soft lobes, so its outline is lumpy the way a cloud
+  is, and a frame remembers the depth of what it drew, so no puff or spring
+  jet shows through a wall standing in front of it.
 
 ### Changed
 

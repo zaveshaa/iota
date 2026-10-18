@@ -187,6 +187,7 @@ static void steam_spawn(Water *w, const Spout *sp)
     s->span = 1.6f + rng_unit(&w->rng) * 1.2f;
     s->life = s->span;
     s->radius = 0.38f + rng_unit(&w->rng) * 0.28f;
+    s->seed = w->rng;
 }
 
 static void steam_step(Water *w, float dt)
