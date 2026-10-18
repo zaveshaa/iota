@@ -39,6 +39,10 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   thin wooden bars with translucent paper in the panes, so light behind it
   filters through as a soft glow while the bars stay solid. The paint tool
   turns a block into a shoji screen, and the bathhouse hangs a few.
+- Glass: a block flagged as glass is a clear, tinted pane — the ray passes
+  straight through to what stands behind it, a fresnel sheen catches the near
+  face at a grazing angle, and a lamp mirrors off it as a small glint. The
+  paint tool turns a block into glass.
 
 ### Changed
 
