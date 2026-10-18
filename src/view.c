@@ -296,104 +296,88 @@ static unsigned mix_ink(unsigned a, unsigned b, float f)
     return (rr << 16) | (rg << 8) | rb;
 }
 
-#define STEAM_LOBES 5
-
-// a puff of steam is a little cluster of soft lobes laid in the plane that
-// faces the eye, their offsets and sizes drawn from the puff's seed, so the
-// outline is lumpy the way a cloud is rather than a bare ball. Anything a
-// nearer surface hides is skipped, and where the puff is thin only a wisp of
-// its colour drifts over whatever the ray already drew.
+// A puff of steam is one small soft mote: it fades toward its rim and never
+// gets thick, so it stays see-through, and a clump of them rising together
+// reads as a cloud. Anything a nearer surface hides is skipped.
+//
+// A cell's ray is fwd + rt*xr + up*yu, so where that ray crosses the plane
+// through the puff, measured against the puff itself, sits at (z*xr - rel_rt,
+// z*yu - rel_up) — no normalising needed.
 static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
                         Vec3 fwd, Vec3 rt, Vec3 up, float tan_half, float aspect,
                         int cols, int rows, float alpha)
 {
     static const char ramp[] = ".:~*oO%@";
-    unsigned steam_ink = RGB(196, 208, 226);
+    unsigned steam_ink = RGB(206, 214, 230);
     Vec3 rel = v3_sub(p->p, eye);
     float z = v3_dot(rel, fwd);
-    float xrp;
-    float yup;
-    float pr;
+    float rel_rt = v3_dot(rel, rt);
+    float rel_up = v3_dot(rel, up);
+    float cellw;
+    float kx;
+    float ky;
+    float xr0;
+    float yu0;
+    float ox0;
+    float oy0;
+    float r2;
     int cx;
     int cy;
     int rad;
     int dx;
     int dy;
-    int l;
     int last = (int)(sizeof ramp - 2);
-    float lobe[STEAM_LOBES][3];
-    unsigned h;
 
     if (z <= 0.05f) {
         return;
     }
-    xrp = v3_dot(rel, rt) / (z * aspect * tan_half);
-    yup = v3_dot(rel, up) / (z * tan_half);
-    pr = p->radius / (z * tan_half) * ((float)rows * 0.5f);
-    cx = (int)((xrp + 1.0f) * 0.5f * (float)cols);
-    cy = (int)((1.0f - yup) * 0.5f * (float)rows);
-
-    h = hash_u(p->seed | 1u);
-    for (l = 0; l < STEAM_LOBES; l++) {
-        h = hash_u(h + 0x9e3779b9u);
-        lobe[l][0] = ((float)((h >> 8) & 0xffu) / 255.0f - 0.5f) *
-                     p->radius * 1.25f;
-        lobe[l][1] = ((float)((h >> 16) & 0xffu) / 255.0f - 0.5f) *
-                     p->radius * 1.05f;
-        lobe[l][2] = p->radius * (0.45f +
-                    0.30f * (float)((h >> 24) & 0xffu) / 255.0f);
-    }
-
-    rad = (int)(pr * 1.7f + 0.5f);
+    cx = (int)((rel_rt / (z * aspect * tan_half) + 1.0f) * 0.5f * (float)cols);
+    cy = (int)((1.0f - rel_up / (z * tan_half)) * 0.5f * (float)rows);
+    r2 = p->radius * p->radius;
+    kx = 2.0f * aspect * tan_half / (float)cols;
+    ky = -2.0f * tan_half / (float)rows;
+    cellw = -z * ky;
+    xr0 = (2.0f * ((float)cx + 0.5f) / (float)cols - 1.0f) * aspect * tan_half;
+    yu0 = (1.0f - 2.0f * ((float)cy + 0.5f) / (float)rows) * tan_half;
+    ox0 = z * xr0 - rel_rt;
+    oy0 = z * yu0 - rel_up;
+    rad = (int)(p->radius / cellw + 0.5f);
     if (rad < 1) {
         rad = 1;
     }
-    if (rad > 36) {
-        rad = 36;
+    if (rad > 3) {
+        rad = 3;
     }
     for (dy = -rad; dy <= rad; dy++) {
         for (dx = -rad; dx <= rad; dx++) {
             int gx = cx + dx;
             int gy = cy + dy;
+            float oxp = ox0 + z * kx * (float)dx;
+            float oyp = oy0 + z * ky * (float)dy;
+            float d2 = oxp * oxp + oyp * oyp;
             float xr;
             float yu;
-            Vec3 rd;
             float s;
-            float ox;
-            float oy;
-            float dens = 0.0f;
+            float edge;
+            float dens;
             float blend;
             int gi;
 
             if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) {
                 continue;
             }
-            xr = (2.0f * ((float)gx + 0.5f) / (float)cols - 1.0f) *
-                 aspect * tan_half;
-            yu = (1.0f - 2.0f * ((float)gy + 0.5f) / (float)rows) * tan_half;
-            rd = v3_norm(v3_add(fwd, v3_add(v3_mul(rt, xr),
-                                           v3_mul(up, yu))));
-            s = z / v3_dot(rd, fwd);
+            if (d2 > r2) {
+                continue;
+            }
+            xr = xr0 + kx * (float)dx;
+            yu = yu0 + ky * (float)dy;
+            s = z * sqrtf(1.0f + xr * xr + yu * yu);
             if (s > zbuf[(size_t)gy * (size_t)cols + (size_t)gx] + 0.1f) {
                 continue;
             }
-            ox = v3_dot(rd, rt) * s;
-            oy = v3_dot(rd, up) * s;
-            for (l = 0; l < STEAM_LOBES; l++) {
-                float ddx = ox - lobe[l][0];
-                float ddy = oy - lobe[l][1];
-                float rr = lobe[l][2];
-                float w = 1.0f - (ddx * ddx + ddy * ddy) / (rr * rr);
-
-                if (w > 0.0f) {
-                    dens += w * w;
-                }
-            }
-            dens *= alpha;
-            if (dens > 1.0f) {
-                dens = 1.0f;
-            }
-            if (dens < 0.05f) {
+            edge = 1.0f - d2 / r2;
+            dens = alpha * edge * edge;
+            if (dens < 0.04f) {
                 continue;
             }
             gi = (int)(dens * (float)last);
@@ -403,7 +387,7 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
             if (gi > last) {
                 gi = last;
             }
-            blend = dens > 0.75f ? 0.75f : dens;
+            blend = dens > 0.5f ? 0.5f : dens;
             render_put(r, gx, gy, (unsigned char)ramp[gi],
                        mix_ink(render_ink(r, gx, gy), steam_ink, blend));
         }
@@ -672,7 +656,7 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
             float age = 1.0f - puff->life / puff->span;
             float fin = clamp01(age / 0.2f);
             float fout = clamp01((1.0f - age) / 0.5f);
-            float alpha = 0.85f * fin * fout;
+            float alpha = 0.62f * fin * fout;
 
             if (alpha < 0.05f) {
                 continue;

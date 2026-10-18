@@ -24,12 +24,11 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   so a pillar or a roof lays its shade on what it stands over.
 - Fog pulls distant surfaces toward the sky colour along the view direction,
   so the ground slips into the horizon cleanly, with a smoother ramp in.
-- Steam leaves a pool as soft drifting clouds: each puff swells and thins as
-  it rises, and where it is faint its colour only drifts over what is behind
-  it, instead of a thin string of single specks.
-- A puff is a cluster of soft lobes, so its outline is lumpy the way a cloud
-  is, and a frame remembers the depth of what it drew, so no puff or spring
-  jet shows through a wall standing in front of it.
+- Steam leaves a pool as a drift of small translucent motes that rise and
+  fade, thinning toward their rim so what is behind shows through, instead of
+  a thin string of single specks or a solid mass. A frame remembers the depth
+  of what it drew, so no mote or spring jet shows through a wall standing in
+  front of it.
 
 ### Changed
 
