@@ -84,7 +84,8 @@ rectangle, `stairs` rise from a foot to a top, `tunnel` bores a roofed,
 open-ended corridor, `pit` sinks an open-topped basin of the set depth, `spawn`
 sets where the body starts, `light` hangs a lamp, `paint` turns a block's
 material over, and `erase` takes a panel away. The `select` tool picks a panel
-or a lamp and the panel then edits its position, size, turn and, for a lamp, its
+or a lamp and the panel then edits its position, size, turn, colour (as red,
+green and blue steppers with a swatch), and, for a lamp, its
 power. The first click drops an anchor, a ghost previews the build as the
 pointer moves, and the second click lays it down. A ground grid with coloured
 axes can be turned on to line the walls up. `r` turns the block under the cursor

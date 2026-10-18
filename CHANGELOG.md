@@ -43,6 +43,10 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   straight through to what stands behind it, a fresnel sheen catches the near
   face at a grazing angle, and a lamp mirrors off it as a small glint. The
   paint tool turns a block into glass.
+- The editor paints a block any colour: the panel's red, green and blue
+  steppers set the selected block's ink straight to any of the 24-bit range,
+  with a swatch showing the mixed colour, so a tile, a mirror or a pane is no
+  longer tied to its material's preset tint.
 
 ### Changed
 
