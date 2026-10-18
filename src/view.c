@@ -378,14 +378,16 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
     if (w != NULL) {
         int k;
 
-        if (w->spout_on) {
-            float sy = water_surface(w, w->spout_x, w->spout_z);
+        for (k = 0; k < w->spout_n; k++) {
+            const Spout *sp = &w->spouts[k];
+            float sy = water_surface(w, sp->top.x, sp->top.z);
             unsigned ink = RGB(120, 178, 236);
+            int j;
 
-            for (k = 0; k <= 12; k++) {
-                float f = (float)k / 12.0f;
-                Vec3 p = v3(w->spout_x, w->spout_y + (sy - w->spout_y) * f,
-                            w->spout_z);
+            for (j = 0; j <= 12; j++) {
+                float f = (float)j / 12.0f;
+                Vec3 p = v3(sp->top.x, sp->top.y + (sy - sp->top.y) * f,
+                            sp->top.z);
 
                 plot_point(r, p, cam->pos, forward, right, up, tan_half,
                            aspect, cols, rows, (unsigned char)'|', ink);

@@ -32,14 +32,24 @@ typedef struct {
 
 #define SCENE_MAX_OBJS 64
 #define SCENE_MAX_LIGHTS 8
+#define SCENE_MAX_SPOUTS 6
+
+// a spring that feeds a pool: the mouth it pours from and how hard
+typedef struct {
+    Vec3 top;
+    float rate;
+} SpoutSpec;
 
 // where a pool of water sits: a rectangle in the ground plane and the height
-// its surface rests at, with the spacing the ripple grid is laid out on
+// its surface rests at, with the spacing the ripple grid is laid out on, plus
+// the springs that pour into it
 typedef struct {
     Vec3 lo;
     Vec3 hi;
     float level;
     float spacing;
+    SpoutSpec spouts[SCENE_MAX_SPOUTS];
+    int spout_count;
 } WaterSpec;
 
 typedef struct {

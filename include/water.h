@@ -4,6 +4,7 @@
 #include "vec3.h"
 
 #define WATER_STEAM_MAX 64
+#define WATER_SPOUT_MAX 6
 
 typedef struct {
     Vec3 p;
@@ -11,6 +12,14 @@ typedef struct {
     float life;
     float span;
 } Steam;
+
+// a pipe or spring feeding the pool: where its mouth sits above the water and
+// how hard it pours, plus the steam it has saved up to release
+typedef struct {
+    Vec3 top;
+    float rate;
+    float spawn_acc;
+} Spout;
 
 typedef struct {
     float x0;
@@ -25,12 +34,8 @@ typedef struct {
     float *cur;
     float *prev;
     float *next;
-    int spout_on;
-    float spout_x;
-    float spout_y;
-    float spout_z;
-    float spout_rate;
-    float spawn_acc;
+    Spout spouts[WATER_SPOUT_MAX];
+    int spout_n;
     unsigned rng;
     int steam_n;
     Steam steam[WATER_STEAM_MAX];
