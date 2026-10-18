@@ -181,10 +181,10 @@ static void steam_emit(Water *w, float x, float z)
     s->p = v3(x + (rng_unit(&w->rng) - 0.5f) * 0.5f,
               water_surface(w, x, z) + 0.1f,
               z + (rng_unit(&w->rng) - 0.5f) * 0.5f);
-    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.22f,
-              0.34f + rng_unit(&w->rng) * 0.26f,
-              (rng_unit(&w->rng) - 0.5f) * 0.22f);
-    s->span = 45.0f + rng_unit(&w->rng) * 30.0f;
+    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.2f,
+              0.1f + rng_unit(&w->rng) * 0.12f,
+              (rng_unit(&w->rng) - 0.5f) * 0.2f);
+    s->span = 5.0f + rng_unit(&w->rng) * 4.0f;
     s->life = s->span;
     s->radius = 0.45f + rng_unit(&w->rng) * 0.4f;
     s->seed = w->rng;
@@ -204,7 +204,7 @@ static void steam_step(Water *w, float dt)
             continue;
         }
         s->p = v3_add(s->p, v3_mul(s->v, dt));
-        s->v.y += 0.03f * dt;
+        s->v.y += 0.01f * dt;
         s->v.x *= 1.0f - 0.18f * dt;
         s->v.z *= 1.0f - 0.18f * dt;
         i++;
@@ -240,7 +240,7 @@ void water_step(Water *w, float dt)
         add_ripple(w, sp->top.x, sp->top.z, 0.32f,
                    (0.9f + 0.3f * pulse) * sp->rate * dt);
         if (w->heat > 0.0f) {
-            sp->spawn_acc += sp->rate * dt * 10.0f * w->heat;
+            sp->spawn_acc += sp->rate * dt * 3.0f * w->heat;
             while (sp->spawn_acc >= 1.0f) {
                 sp->spawn_acc -= 1.0f;
                 steam_emit(w, sp->top.x, sp->top.z);
@@ -250,7 +250,7 @@ void water_step(Water *w, float dt)
     if (w->heat > 0.0f) {
         float area = (w->x1 - w->x0) * (w->z1 - w->z0);
 
-        w->steam_acc += w->heat * area * 0.5f * dt;
+        w->steam_acc += w->heat * area * 0.1f * dt;
         while (w->steam_acc >= 1.0f) {
             w->steam_acc -= 1.0f;
             steam_emit(w, w->x0 + rng_unit(&w->rng) * (w->x1 - w->x0),

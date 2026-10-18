@@ -166,23 +166,34 @@ static void spout_stirs_and_steams(void)
 
 static void hot_surface_steams_across(void)
 {
-    Water w = make_pool();
+    Water w;
     int n;
     int i;
+    float x0 = 999.0f;
+    float x1 = -999.0f;
 
+    memset(&w, 0, sizeof w);
+    water_open(&w, v3(-4.0f, 0.0f, -4.0f), v3(4.0f, 0.0f, 4.0f), 1.0f, 0.5f);
     w.heat = 1.0f;
-    for (n = 0; n < 12; n++) {
+    for (n = 0; n < 40; n++) {
         step(&w, 0.25f);
     }
     check(w.steam_n > 5, "a hot pool steams across its whole surface");
     for (i = 0; i < w.steam_n; i++) {
         const Steam *s = &w.steam[i];
 
-        if (s->span < 40.0f) {
+        if (s->p.x < x0) {
+            x0 = s->p.x;
+        }
+        if (s->p.x > x1) {
+            x1 = s->p.x;
+        }
+        if (s->span > 20.0f) {
             break;
         }
     }
-    check(i == w.steam_n, "the puffs live long enough to rise far");
+    check(i == w.steam_n, "the puffs are short-lived and fade in place");
+    check(x1 - x0 > 3.0f, "the steam spreads over the pool, not one column");
     water_close(&w);
 }
 

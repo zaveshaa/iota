@@ -499,7 +499,7 @@ static void steam_cloud(Render *r, const float *zbuf, const Steam *p, Vec3 eye,
             if (gi > last) {
                 gi = last;
             }
-            blend = dens > 0.5f ? 0.5f : dens;
+            blend = dens > 0.4f ? 0.4f : dens;
             render_put(r, gx, gy, (unsigned char)ramp[gi],
                        mix_ink(render_ink(r, gx, gy), steam_ink, blend));
         }
@@ -798,9 +798,9 @@ void view_render(const Scene *s, const Meshes *ms, const Water *w,
         for (k = 0; k < w->steam_n; k++) {
             const Steam *puff = &w->steam[k];
             float age_s = puff->span - puff->life;
-            float fin = clamp01(age_s / 1.5f);
-            float fout = clamp01(puff->life / 14.0f);
-            float alpha = 0.62f * fin * fout;
+            float fin = smoothstep01(0.0f, 1.0f, age_s);
+            float fout = smoothstep01(0.0f, 1.0f, puff->life / (puff->span * 0.5f));
+            float alpha = 0.34f * fin * fout;
 
             if (alpha < 0.05f) {
                 continue;

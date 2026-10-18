@@ -30,11 +30,12 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of what it drew, so no mote or spring jet shows through a wall standing in
   front of it.
 - Water carries heat. A hot pool — the bath, a hot spring — breathes steam
-  from across its whole surface, and the motes rise far and live about a
-  minute before the top ones thin out; a cold pool, an ocean, steams nowhere.
-  Each mote is a few overlapping lobes, so a puff reads as a rounded but
-  irregular wisp rather than a perfect disc. The `water` line takes an
-  optional heat after its spacing.
+  from across its whole surface: small transparent wisps appear on the water,
+  drift gently, and dissolve smoothly after a few seconds, so the surface
+  keeps a calm moving haze that never piles up into a cloud. A cold pool, an
+  ocean, steams nowhere. Each wisp is a few overlapping lobes, so it reads as
+  a rounded but irregular puff rather than a perfect disc. The `water` line
+  takes an optional heat after its spacing.
 - Shoji: a block flagged as shoji is a Japanese paper screen — a lattice of
   thin wooden bars with translucent paper in the panes, so light behind it
   filters through as a soft glow while the bars stay solid. The paint tool
