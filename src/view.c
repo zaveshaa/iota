@@ -251,6 +251,42 @@ static int on_grout(Vec3 p, Vec3 n)
     return fu < edge || fu > 1.0f - edge || fv < edge || fv > 1.0f - edge;
 }
 
+#define SHOJI_CELL 0.55f
+#define SHOJI_BAR 0.13f
+#define SHOJI_WOOD 0.5f
+#define SHOJI_GLOW 1.35f
+#define SHOJI_SEETHROUGH 0.34f
+
+static float wrap_frac(float x, float cell)
+{
+    float f = fmodf(x, cell);
+
+    if (f < 0.0f) {
+        f += cell;
+    }
+    return f / cell;
+}
+
+// the lattice of a shoji screen: a grid of wooden bars a hair thick, with
+// translucent paper in the panes between. The bars run along the wall and up
+// its height, so the screen reads the same however it is turned.
+static int on_shoji_bar(Vec3 p, Vec3 n)
+{
+    Vec3 right = v3_cross(n, v3(0.0f, 1.0f, 0.0f));
+    float rlen = v3_len(right);
+    float fu;
+    float fv;
+
+    if (rlen < 1e-3f) {
+        return 1;
+    }
+    right = v3_mul(right, 1.0f / rlen);
+    fu = wrap_frac(v3_dot(p, right), SHOJI_CELL);
+    fv = wrap_frac(p.y, SHOJI_CELL);
+    return fu < SHOJI_BAR || fu > 1.0f - SHOJI_BAR || fv < SHOJI_BAR ||
+           fv > 1.0f - SHOJI_BAR;
+}
+
 static void plot_point(Render *r, const float *zbuf, Vec3 p, Vec3 eye, Vec3 fwd,
                        Vec3 rt, Vec3 up, float tan_half, float aspect, int cols,
                        int rows, unsigned char ch, unsigned ink)
@@ -492,6 +528,19 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth, float *z_out)
     }
     if (h.action == HIT_MIRROR) {
         return cx->fog;
+    }
+    if (h.action == HIT_SHOJI) {
+        float k = on_shoji_bar(h.point, h.normal) ? SHOJI_WOOD : SHOJI_GLOW;
+        Vec3 lit = v3_mul(shade(cx->s, cx->ms, &h), k);
+
+        if (k > SHOJI_WOOD && depth < VIEW_MAX_DEPTH) {
+            Vec3 paper = rgb_vec(h.obj->ink);
+            Vec3 ro = v3_add(h.point, v3_mul(dir, 2e-2f));
+            Vec3 through = v3_had(trace(cx, ro, dir, depth + 1, NULL), paper);
+
+            lit = mix(lit, through, SHOJI_SEETHROUGH);
+        }
+        return fogged(cx, lit, dir, h.t);
     }
     col = fogged(cx, shade(cx->s, cx->ms, &h), dir, h.t);
     if (h.action == HIT_TILE) {

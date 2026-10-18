@@ -35,6 +35,10 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Each mote is a few overlapping lobes, so a puff reads as a rounded but
   irregular wisp rather than a perfect disc. The `water` line takes an
   optional heat after its spacing.
+- Shoji: a block flagged as shoji is a Japanese paper screen — a lattice of
+  thin wooden bars with translucent paper in the panes, so light behind it
+  filters through as a soft glow while the bars stay solid. The paint tool
+  turns a block into a shoji screen, and the bathhouse hangs a few.
 
 ### Changed
 
