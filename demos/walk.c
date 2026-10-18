@@ -65,9 +65,13 @@ static void build_range(Scene *s, int gem)
        together, and the tile and the pool catch the soft light the shadows
        leave between them */
     s->have_moon = 1;
-    s->sky_moon_dir = v3(-0.28f, 0.30f, 1.0f);
+    s->sky_moon_dir = v3(-0.20f, 0.32f, 1.0f);
     s->sky_moon = RGB(232, 230, 208);
     s->sky_moon_size = 0.08f;
+    /* start the walk looking over the pool, so the steam, the water and the
+       moon all sit in the first frame */
+    s->have_spawn = 1;
+    s->spawn = v3(12.0f, 0.0f, -10.0f);
     /* the ground is a frame of four slabs that leaves an open square for the
        pit, so the main plane does not bury it */
     add_box(s, v3(-6.0f, -0.5f, 0.0f), v3(14.0f, 0.5f, 20.0f),

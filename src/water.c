@@ -178,14 +178,15 @@ static void steam_spawn(Water *w, const Spout *sp)
     }
     s = &w->steam[w->steam_n];
     w->steam_n++;
-    s->p = v3(sp->top.x + (rng_unit(&w->rng) - 0.5f) * 0.5f,
-              water_surface(w, sp->top.x, sp->top.z) + 0.05f,
-              sp->top.z + (rng_unit(&w->rng) - 0.5f) * 0.5f);
-    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.4f,
-              0.6f + rng_unit(&w->rng) * 0.9f,
-              (rng_unit(&w->rng) - 0.5f) * 0.4f);
-    s->span = 0.9f + rng_unit(&w->rng) * 0.9f;
+    s->p = v3(sp->top.x + (rng_unit(&w->rng) - 0.5f) * 0.9f,
+              water_surface(w, sp->top.x, sp->top.z) + 0.15f,
+              sp->top.z + (rng_unit(&w->rng) - 0.5f) * 0.9f);
+    s->v = v3((rng_unit(&w->rng) - 0.5f) * 0.3f,
+              0.45f + rng_unit(&w->rng) * 0.45f,
+              (rng_unit(&w->rng) - 0.5f) * 0.3f);
+    s->span = 1.6f + rng_unit(&w->rng) * 1.2f;
     s->life = s->span;
+    s->radius = 0.38f + rng_unit(&w->rng) * 0.28f;
 }
 
 static void steam_step(Water *w, float dt)
@@ -202,9 +203,9 @@ static void steam_step(Water *w, float dt)
             continue;
         }
         s->p = v3_add(s->p, v3_mul(s->v, dt));
-        s->v.y -= 0.35f * dt;
-        s->v.x *= 1.0f - 0.6f * dt;
-        s->v.z *= 1.0f - 0.6f * dt;
+        s->radius += (0.35f + 0.55f * s->radius) * dt;
+        s->v.x *= 1.0f - 0.9f * dt;
+        s->v.z *= 1.0f - 0.9f * dt;
         i++;
     }
 }
@@ -237,7 +238,7 @@ void water_step(Water *w, float dt)
 
         add_ripple(w, sp->top.x, sp->top.z, 0.32f,
                    (0.9f + 0.3f * pulse) * sp->rate * dt);
-        sp->spawn_acc += sp->rate * dt * 14.0f;
+        sp->spawn_acc += sp->rate * dt * 6.0f;
         while (sp->spawn_acc >= 1.0f) {
             sp->spawn_acc -= 1.0f;
             steam_spawn(w, sp);
