@@ -20,6 +20,8 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   so a saved map stirs ripples and lifts steam where walk loads it.
 - The sky carries a field of stars and, when a level hangs one, a moon: the
   `sky` line takes the moon's direction, colour and size.
+- Light stops at the first surface in its way: each light casts a shadow ray,
+  so a pillar or a roof lays its shade on what it stands over.
 
 ### Changed
 

@@ -168,6 +168,69 @@ static void tile_checks(void)
     check(h.action == HIT_CONTINUE, "an untiled floor is a plain surface", NULL);
 }
 
+static float frame_lum(const Scene *s, const Camera *cam)
+{
+    Render *r = render_open(32, 16);
+    ViewStats st;
+    float sum = 0.0f;
+    int x;
+    int y;
+
+    if (r == NULL) {
+        return 0.0f;
+    }
+    view_render(s, NULL, NULL, cam, r, 1, 0.0f, &st);
+    for (y = 0; y < render_rows(r); y++) {
+        for (x = 0; x < render_cols(r); x++) {
+            unsigned ink = render_ink(r, x, y);
+
+            sum += (float)(((ink >> 16) & 0xffu) + ((ink >> 8) & 0xffu) +
+                           (ink & 0xffu));
+        }
+    }
+    render_close(r);
+    return sum;
+}
+
+static void shadow_checks(void)
+{
+    Scene s;
+    Camera cam;
+    Obj *o;
+    Light *l;
+    float open_lum;
+    float blocked_lum;
+
+    scene_clear(&s);
+    s.ambient = 0u;
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, -0.5f, 0.0f);
+    o->half = v3(20.0f, 0.5f, 20.0f);
+    o->ink = RGB(200, 200, 200);
+    l = scene_add_light(&s);
+    l->kind = LIGHT_POINT;
+    l->pos = v3(0.0f, 6.0f, 0.0f);
+    l->color = v3(1.0f, 1.0f, 1.0f);
+    l->intensity = 3.0f;
+    cam.pos = v3(0.0f, 5.0f, 6.0f);
+    cam.yaw = 3.14159265f;
+    cam.pitch = -0.6f;
+    cam.fov = 1.05f;
+
+    open_lum = frame_lum(&s, &cam);
+
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 3.0f, 0.0f);
+    o->half = v3(1.5f, 0.2f, 1.5f);
+    o->ink = 0u;
+
+    blocked_lum = frame_lum(&s, &cam);
+    check(open_lum > 0.0f && blocked_lum < open_lum,
+          "a blocker darkens the floor it stands over", NULL);
+}
+
 static int read_golden(const char *path, unsigned *want)
 {
     FILE *f = fopen(path, "rb");
@@ -240,6 +303,7 @@ int main(int argc, char **argv)
     cast_checks(&scene);
     tile_checks();
     yaw_checks();
+    shadow_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {

@@ -63,7 +63,18 @@ static Vec3 mix(Vec3 a, Vec3 b, float f)
     return v3_add(v3_mul(a, 1.0f - f), v3_mul(b, f));
 }
 
-static Vec3 shade(const Scene *s, const Hit *h)
+// a shadow ray leaves the surface just off its face and asks whether anything
+// stands between it and the light
+static int in_shadow(const Scene *s, const Meshes *ms, Vec3 point, Vec3 normal,
+                     Vec3 ld, float tmax)
+{
+    Vec3 ro = v3_add(point, v3_mul(normal, 2e-3f));
+    Hit h = cast_ray(s, ms, ro, ld, tmax);
+
+    return h.action != HIT_NONE;
+}
+
+static Vec3 shade(const Scene *s, const Meshes *ms, const Hit *h)
 {
     Vec3 albedo = rgb_vec(h->obj->ink);
     Vec3 acc = v3_had(albedo, rgb_vec(s->ambient));
@@ -74,6 +85,7 @@ static Vec3 shade(const Scene *s, const Hit *h)
         Vec3 ld;
         float atten = 1.0f;
         float ndotl;
+        float tmax = 1e9f;
 
         if (l->kind == LIGHT_POINT) {
             Vec3 to = v3_sub(l->pos, h->point);
@@ -84,11 +96,15 @@ static Vec3 shade(const Scene *s, const Hit *h)
             }
             ld = v3_mul(to, 1.0f / dist);
             atten = 1.0f / (1.0f + 0.04f * dist * dist);
+            tmax = dist * 0.999f;
         } else {
             ld = v3_norm(v3_mul(l->dir, -1.0f));
         }
         ndotl = v3_dot(h->normal, ld);
         if (ndotl <= 0.0f) {
+            continue;
+        }
+        if (in_shadow(s, ms, h->point, h->normal, ld, tmax)) {
             continue;
         }
         acc = v3_add(acc,
@@ -286,7 +302,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
                 Vec3 behind = sky_color(cx->s, dir);
 
                 if (h.action != HIT_NONE && h.obj != NULL) {
-                    behind = mix(shade(cx->s, &h), cx->fog,
+                    behind = mix(shade(cx->s, cx->ms, &h), cx->fog,
                                  fog_factor(cx->s, h.t));
                 }
                 return mix(mix(behind, water_color(wa, dir), opacity),
@@ -307,7 +323,7 @@ static Vec3 trace(Ctx *cx, Vec3 origin, Vec3 dir, int depth)
     if (h.action == HIT_MIRROR) {
         return cx->fog;
     }
-    col = mix(shade(cx->s, &h), cx->fog, fog_factor(cx->s, h.t));
+    col = mix(shade(cx->s, cx->ms, &h), cx->fog, fog_factor(cx->s, h.t));
     if (h.action == HIT_TILE) {
         if (on_grout(h.point, h.normal)) {
             col = v3_mul(col, 0.18f);
