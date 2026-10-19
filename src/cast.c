@@ -3,11 +3,24 @@
 #include <float.h>
 #include <math.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #define HIT_EPS 1e-4f
+#define SCENE_BVH_LEAF 4
 
-// a box may be turned about the vertical: the ray is spun into the box's own
-// frame for the slab test, and the face normal it finds is spun back out
+typedef struct {
+    Vec3 lo;
+    Vec3 hi;
+} Aabb;
+
+typedef struct {
+    Aabb box;
+    int left;
+    int right;
+    int start;
+    int count;
+} SceneNode;
+
 static int ray_box(Vec3 o, Vec3 d, Vec3 c, Vec3 half, float yaw, float *t_out,
                    Vec3 *n_out)
 {
@@ -116,6 +129,40 @@ static int ray_plane(Vec3 o, Vec3 d, Vec3 p, Vec3 n, float *t_out)
     return 1;
 }
 
+static int intersect_obj(const Obj *o, const Meshes *ms, Vec3 origin, Vec3 dir,
+                         float *t_out, Vec3 *n_out)
+{
+    float t = 0.0f;
+    Vec3 n = v3(0.0f, 1.0f, 0.0f);
+    int hit = 0;
+
+    if (o->kind == OBJ_SPHERE) {
+        float radius = o->half.x;
+        hit = ray_sphere(origin, dir, o->pos, radius, &t);
+        if (hit) {
+            n = v3_mul(v3_sub(v3_add(origin, v3_mul(dir, t)), o->pos),
+                       1.0f / radius);
+        }
+    } else if (o->kind == OBJ_BOX) {
+        hit = ray_box(origin, dir, o->pos, o->half, o->yaw, &t, &n);
+    } else if (o->kind == OBJ_MESH) {
+        if (ms != NULL && o->mesh >= 0 && o->mesh < ms->count) {
+            Vec3 local = v3_sub(origin, o->pos);
+            hit = mesh_tri_hit(&ms->items[o->mesh], local, dir, &t, &n);
+        }
+    } else {
+        hit = ray_plane(origin, dir, o->pos, o->axis, &t);
+        if (hit) {
+            n = o->axis;
+        }
+    }
+    if (hit) {
+        *t_out = t;
+        *n_out = n;
+    }
+    return hit;
+}
+
 Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
              float tmax)
 {
@@ -134,30 +181,7 @@ Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
         Vec3 n = v3(0.0f, 0.0f, 0.0f);
         int hit = 0;
 
-        if (o->kind == OBJ_SPHERE) {
-            float radius = o->half.x;
-
-            hit = ray_sphere(origin, dir, o->pos, radius, &t);
-            if (hit) {
-                n = v3_mul(v3_sub(v3_add(origin, v3_mul(dir, t)), o->pos),
-                           1.0f / radius);
-            }
-        } else if (o->kind == OBJ_BOX) {
-            hit = ray_box(origin, dir, o->pos, o->half, o->yaw, &t, &n);
-        } else if (o->kind == OBJ_MESH) {
-            // the triangles live at the origin, so the ray is pulled back to the
-            // object's own frame and the hit distance is the world's already
-            if (ms != NULL && o->mesh >= 0 && o->mesh < ms->count) {
-                Vec3 local = v3_sub(origin, o->pos);
-
-                hit = mesh_tri_hit(&ms->items[o->mesh], local, dir, &t, &n);
-            }
-        } else {
-            hit = ray_plane(origin, dir, o->pos, o->axis, &t);
-            if (hit) {
-                n = o->axis;
-            }
-        }
+        hit = intersect_obj(o, ms, origin, dir, &t, &n);
         if (!hit || t >= best.t) {
             continue;
         }

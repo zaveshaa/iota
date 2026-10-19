@@ -6,7 +6,7 @@
 
 #define STEP (1.0 / 60.0)
 #define FRAME_TIME 0.016
-#define FRAME_BUDGET_MS 11.0
+#define FRAME_BUDGET_MS 15.0
 
 struct Engine {
     Render *render;
