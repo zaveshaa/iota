@@ -103,6 +103,9 @@ static Vec3 shade(const Scene *s, const Meshes *ms, const Hit *h)
         if (ndotl <= 0.0f) {
             continue;
         }
+        if (atten < 1e-2f) {
+            continue;
+        }
         if (in_shadow(s, ms, h->point, h->normal, ld, tmax)) {
             continue;
         }
