@@ -68,9 +68,8 @@ static int in_shadow(const Scene *s, const Meshes *ms, Vec3 point, Vec3 normal,
                      Vec3 ld, float tmax)
 {
     Vec3 ro = v3_add(point, v3_mul(normal, 2e-3f));
-    Hit h = cast_ray(s, ms, ro, ld, tmax);
 
-    return h.action != HIT_NONE;
+    return cast_any(s, ms, ro, ld, tmax);
 }
 
 static Vec3 shade(const Scene *s, const Meshes *ms, const Hit *h)
