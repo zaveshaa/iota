@@ -23,4 +23,7 @@ typedef struct {
 Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
              float tmax);
 
+int cast_any(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
+             float tmax);
+
 #endif

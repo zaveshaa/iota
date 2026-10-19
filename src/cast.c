@@ -163,12 +163,27 @@ static int intersect_obj(const Obj *o, const Meshes *ms, Vec3 origin, Vec3 dir,
     return hit;
 }
 
+int cast_any(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
+             float tmax)
+{
+    int i;
+
+    for (i = 0; i < s->obj_count; i++) {
+        float t = 0.0f;
+        Vec3 n = v3(0.0f, 0.0f, 0.0f);
+
+        if (intersect_obj(&s->objs[i], ms, origin, dir, &t, &n) && t < tmax) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 Hit cast_ray(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
              float tmax)
 {
     Hit best;
     int i;
-
     best.action = HIT_NONE;
     best.t = tmax;
     best.point = v3(0.0f, 0.0f, 0.0f);
