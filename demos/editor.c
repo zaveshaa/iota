@@ -50,14 +50,14 @@ static const char *const TOOL_NAME[TOOL_COUNT] = {
 
 static const char *const TOOL_HINT[TOOL_COUNT] = {
     "two corners make a solid",
-    "the near end, then the far end",
+    "a preset run, or near end then far end",
     "corner a pool, then the far corner",
     "the foot, then the top",
     "corner a bore, then the far corner",
     "corner a hole, then the far corner",
     "where the body starts",
     "where a lamp hangs",
-    "click a panel or a lamp to pick it",
+    "click a panel, a lamp or the pool to pick it",
     "turn a block's material over",
     "take the panel under the cursor"
 };
@@ -112,10 +112,13 @@ typedef struct {
     float last_t;
     int sel;
     int sel_light;
+    int sel_water;
     float riser;
     float stair_w;
     float wall;
     float wall_h;
+    float wall_len;
+    int wall_chain;
     float depth;
     float lamp_i;
     float res;
@@ -339,10 +342,90 @@ static void draw_box_edges(App *a, Vec3 c, Vec3 h, Vec3 pad, float yaw,
 static void water_apply(App *a)
 {
     if (a->scene.have_water) {
-        water_open(&a->water, a->scene.water.lo, a->scene.water.hi,
-                   a->scene.water.level, a->scene.water.spacing);
+        WaterSpec *w = &a->scene.water;
+        float x0 = fminf(w->lo.x, w->hi.x);
+        float x1 = fmaxf(w->lo.x, w->hi.x);
+        float z0 = fminf(w->lo.z, w->hi.z);
+        float z1 = fmaxf(w->lo.z, w->hi.z);
+        int i;
+
+        w->lo = v3(x0, 0.0f, z0);
+        w->hi = v3(x1, 0.0f, z1);
+        water_open(&a->water, w->lo, w->hi, w->level, w->spacing);
+        a->water.heat = w->heat;
+        for (i = 0; i < w->spout_count; i++) {
+            water_spout(&a->water, w->spouts[i].top, w->spouts[i].rate);
+        }
     } else {
         water_close(&a->water);
+    }
+}
+
+static float water_hit(App *a, Vec3 dir)
+{
+    float t = 0.0f;
+
+    if (!a->scene.have_water) {
+        return -1.0f;
+    }
+    if (water_cast(&a->water, a->cam.pos, dir, REACH, &t, NULL, NULL) != 1) {
+        return -1.0f;
+    }
+    return t;
+}
+
+static void draw_water_edges(App *a, unsigned ink)
+{
+    const WaterSpec *w = &a->scene.water;
+    float x0 = w->lo.x < w->hi.x ? w->lo.x : w->hi.x;
+    float x1 = w->lo.x < w->hi.x ? w->hi.x : w->lo.x;
+    float z0 = w->lo.z < w->hi.z ? w->lo.z : w->hi.z;
+    float z1 = w->lo.z < w->hi.z ? w->hi.z : w->lo.z;
+    float y = w->level + 0.05f;
+
+    line3(a, v3(x0, y, z0), v3(x1, y, z0), (unsigned char)'~', ink);
+    line3(a, v3(x1, y, z0), v3(x1, y, z1), (unsigned char)'~', ink);
+    line3(a, v3(x1, y, z1), v3(x0, y, z1), (unsigned char)'~', ink);
+    line3(a, v3(x0, y, z1), v3(x0, y, z0), (unsigned char)'~', ink);
+}
+
+static Vec3 horiz(Vec3 d)
+{
+    d.y = 0.0f;
+    if (v3_len(d) < 1e-3f) {
+        return v3(1.0f, 0.0f, 0.0f);
+    }
+    return v3_norm(d);
+}
+
+static Vec3 wall_far(const App *a, Vec3 start, Vec3 toward, float len)
+{
+    Vec3 dir = horiz(v3_sub(toward, start));
+
+    if (a->snap) {
+        float angle = atan2f(dir.z, dir.x);
+        float step = QUARTER;
+
+        angle = roundf(angle / step) * step;
+        dir = v3(cosf(angle), 0.0f, sinf(angle));
+    }
+    return v3(start.x + dir.x * len, start.y, start.z + dir.z * len);
+}
+
+static void draw_wall_seg(App *a, Vec3 lo, Vec3 hi, unsigned ink)
+{
+    float dx = hi.x - lo.x;
+    float dz = hi.z - lo.z;
+    float len = sqrtf(dx * dx + dz * dz);
+    float h = clampf(a->wall_h, MIN_HALF, 64.0f);
+    float th = clampf(a->wall, MIN_HALF, 4.0f);
+
+    line3(a, lo, hi, (unsigned char)'#', ink);
+    if (len > 0.001f) {
+        draw_box_edges(a, v3((lo.x + hi.x) * 0.5f, lo.y + h * 0.5f,
+                             (lo.z + hi.z) * 0.5f),
+                       v3(len * 0.5f, h * 0.5f, th * 0.5f),
+                       v3(0.0f, 0.0f, 0.0f), atan2f(-dz, dx), ink);
     }
 }
 
@@ -393,6 +476,7 @@ static void hist_show(App *a, int pos, const char *word)
     a->hist_pos = pos;
     a->sel = -1;
     a->sel_light = -1;
+    a->sel_water = 0;
     ui_edit_stop(&a->ui);
     water_apply(a);
     say(a, word);
@@ -446,7 +530,7 @@ static void place_box(App *a, Vec3 lo, Vec3 hi)
                    MATS[a->mat].name);
 }
 
-static void place_wall(App *a, Vec3 lo, Vec3 hi)
+static int place_wall(App *a, Vec3 lo, Vec3 hi)
 {
     float dx = hi.x - lo.x;
     float dz = hi.z - lo.z;
@@ -457,18 +541,19 @@ static void place_wall(App *a, Vec3 lo, Vec3 hi)
 
     if (len < 0.2f) {
         say(a, "a wall wants a longer run");
-        return;
+        return 0;
     }
     o = add_box(a, v3((lo.x + hi.x) * 0.5f, lo.y + h * 0.5f,
                       (lo.z + hi.z) * 0.5f),
                 v3(len * 0.5f, h * 0.5f, th * 0.5f));
     if (o == NULL) {
         say(a, "no room left for another wall");
-        return;
+        return 0;
     }
     o->yaw = atan2f(-dz, dx);
     (void)snprintf(a->msg, sizeof a->msg, "raised a wall %.1f long, %.1f high",
                    (double)len, (double)h);
+    return 1;
 }
 
 static void place_water(App *a, Vec3 lo, Vec3 hi)
@@ -486,6 +571,8 @@ static void place_water(App *a, Vec3 lo, Vec3 hi)
     a->scene.water.hi = v3(x1, 0.0f, z1);
     a->scene.water.level = lo.y;
     a->scene.water.spacing = 0.5f;
+    a->scene.water.heat = 0.0f;
+    a->scene.water.spout_count = 0;
     a->scene.have_water = 1;
     water_apply(a);
     (void)snprintf(a->msg, sizeof a->msg, "pool at %.1f wide, level %.1f",
@@ -647,6 +734,7 @@ static void place_light(App *a, Vec3 p)
     l->intensity = a->lamp_i;
     a->sel_light = a->scene.light_count - 1;
     a->sel = -1;
+    a->sel_water = 0;
     say(a, "hung a lamp");
 }
 
@@ -720,6 +808,13 @@ static void erase_at(App *a, int idx)
 static void erase_under(App *a, const Obj *obj)
 {
     if (obj == NULL) {
+        if (water_hit(a, mouse_dir(a)) >= 0.0f) {
+            a->scene.have_water = 0;
+            a->sel_water = 0;
+            water_apply(a);
+            say(a, "drained the pool");
+            return;
+        }
         say(a, "nothing under the cursor");
         return;
     }
@@ -732,8 +827,17 @@ static void select_under(App *a)
     Hit h = cast_ray(&a->scene, &a->meshes, a->cam.pos, dir, REACH);
     float best_t = h.action != HIT_NONE ? h.t : REACH;
     int best_light = -1;
+    int on_water = 0;
     int i;
 
+    {
+        float wt = water_hit(a, dir);
+
+        if (wt >= 0.0f && wt < best_t) {
+            best_t = wt;
+            on_water = 1;
+        }
+    }
     for (i = 0; i < a->scene.light_count; i++) {
         const Light *l = &a->scene.lights[i];
         Vec3 oc = v3_sub(l->pos, a->cam.pos);
@@ -755,17 +859,27 @@ static void select_under(App *a)
     if (best_light >= 0) {
         a->sel_light = best_light;
         a->sel = -1;
+        a->sel_water = 0;
         say(a, "picked a lamp");
+        return;
+    }
+    if (on_water) {
+        a->sel = -1;
+        a->sel_light = -1;
+        a->sel_water = 1;
+        say(a, "picked the pool");
         return;
     }
     if (h.action != HIT_NONE && h.obj != NULL) {
         a->sel = (int)(h.obj - a->scene.objs);
         a->sel_light = -1;
+        a->sel_water = 0;
         say(a, "picked a panel");
         return;
     }
     a->sel = -1;
     a->sel_light = -1;
+    a->sel_water = 0;
     say(a, "nothing to pick");
 }
 
@@ -796,6 +910,21 @@ static void world_click(App *a)
     default:
         break;
     }
+    if (a->tool == TOOL_WALL && a->wall_len >= 0.5f) {
+        Vec3 start = a->anchor_set ? a->anchor : p;
+        Vec3 toward = a->anchor_set ? p : v3_add(start, a->forward);
+        Vec3 far = wall_far(a, start, toward, a->wall_len);
+
+        if (place_wall(a, start, far)) {
+            if (a->wall_chain) {
+                a->anchor = far;
+                a->anchor_set = 1;
+            } else {
+                a->anchor_set = 0;
+            }
+        }
+        return;
+    }
     if (!a->anchor_set) {
         a->anchor = p;
         a->anchor_set = 1;
@@ -805,7 +934,11 @@ static void world_click(App *a)
     if (a->tool == TOOL_BOX) {
         place_box(a, a->anchor, p);
     } else if (a->tool == TOOL_WALL) {
-        place_wall(a, a->anchor, p);
+        if (place_wall(a, a->anchor, p) && a->wall_chain) {
+            a->anchor = v3(p.x, a->anchor.y, p.z);
+            a->anchor_set = 1;
+            return;
+        }
     } else if (a->tool == TOOL_WATER) {
         place_water(a, a->anchor, p);
     } else if (a->tool == TOOL_STAIRS) {
@@ -839,6 +972,7 @@ static void app_new(App *a)
     a->scene.have_spawn = 1;
     a->sel = -1;
     a->sel_light = -1;
+    a->sel_water = 0;
     water_apply(a);
 }
 
@@ -908,6 +1042,7 @@ static void app_poll(Engine *e)
                 water_apply(a);
                 a->sel = -1;
                 a->sel_light = -1;
+                a->sel_water = 0;
                 ui_edit_stop(&a->ui);
                 (void)snprintf(a->msg, sizeof a->msg, "read %s", a->path);
             } else {
@@ -1031,6 +1166,9 @@ static void draw_ghost(App *a)
         line3(a, v3(lp.x, lp.y, lp.z - 0.5f), v3(lp.x, lp.y, lp.z + 0.5f),
               (unsigned char)'-', RGB(255, 230, 150));
     }
+    if (a->sel_water && a->scene.have_water) {
+        draw_water_edges(a, RGB(120, 240, 220));
+    }
 
     if (a->tool == TOOL_ERASE) {
         if (obj != NULL) {
@@ -1050,6 +1188,19 @@ static void draw_ghost(App *a)
                        v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(120, 240, 140));
         line3(a, p, v3(p.x, p.y + 1.4f, p.z), (unsigned char)'|',
               RGB(120, 240, 140));
+        return;
+    }
+
+    if (a->tool == TOOL_WALL && a->wall_len >= 0.5f) {
+        Vec3 start = a->anchor_set ? a->anchor : p;
+        Vec3 toward = a->anchor_set ? p : v3_add(start, a->forward);
+
+        if (a->anchor_set) {
+            draw_box_edges(a, a->anchor, v3(0.1f, 0.1f, 0.1f),
+                           v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(120, 220, 255));
+        }
+        draw_wall_seg(a, start, wall_far(a, start, toward, a->wall_len),
+                      RGB(200, 220, 255));
         return;
     }
 
@@ -1076,21 +1227,7 @@ static void draw_ghost(App *a)
         box_corners(a->anchor, floor, &c, &h);
         draw_box_edges(a, c, h, v3(0.0f, 0.0f, 0.0f), 0.0f, RGB(255, 170, 120));
     } else if (a->tool == TOOL_WALL) {
-        float dx = p.x - a->anchor.x;
-        float dz = p.z - a->anchor.z;
-        float len = sqrtf(dx * dx + dz * dz);
-        float h = clampf(a->wall_h, MIN_HALF, 64.0f);
-        float th = clampf(a->wall, MIN_HALF, 4.0f);
-
-        line3(a, a->anchor, p, (unsigned char)'#', RGB(200, 220, 255));
-        if (len > 0.001f) {
-            draw_box_edges(a, v3((a->anchor.x + p.x) * 0.5f,
-                                 a->anchor.y + h * 0.5f,
-                                 (a->anchor.z + p.z) * 0.5f),
-                           v3(len * 0.5f, h * 0.5f, th * 0.5f),
-                           v3(0.0f, 0.0f, 0.0f), atan2f(-dz, dx),
-                           RGB(200, 220, 255));
-        }
+        draw_wall_seg(a, a->anchor, p, RGB(200, 220, 255));
     } else if (a->tool == TOOL_STAIRS) {
         line3(a, a->anchor, p, (unsigned char)'#', RGB(255, 220, 120));
     } else if (a->tool == TOOL_WATER) {
@@ -1169,6 +1306,25 @@ static void draw_panel(App *a)
                   2);
     (void)ui_step(ui, 309, c, r++, w - 4, "wallH", &a->wall_h, 0.5f, 0.1f,
                   64.0f, 1);
+    (void)ui_step(ui, 310, c, r++, w - 4, "wallLen", &a->wall_len, 0.5f, 0.0f,
+                  64.0f, 1);
+    mx = c;
+    if (ui_button(ui, 320, mx, r, "span")) {
+        a->wall_len = 0.0f;
+    }
+    mx += 7;
+    {
+        static const float preset[] = {2.0f, 4.0f, 8.0f, 16.0f};
+        static const char *const label[] = {"2", "4", "8", "16"};
+
+        for (i = 0; i < 4; i++) {
+            if (ui_button(ui, 321 + i, mx, r, label[i])) {
+                a->wall_len = preset[i];
+            }
+            mx += (int)strlen(label[i]) + 3;
+        }
+    }
+    r++;
     (void)ui_step(ui, 304, c, r++, w - 4, "depth", &a->depth, 0.5f, 0.5f, 64.0f,
                   1);
     (void)ui_step(ui, 305, c, r++, w - 4, "lamp", &a->lamp_i, 0.5f, 0.5f, 12.0f,
@@ -1177,6 +1333,7 @@ static void draw_panel(App *a)
                   (float)VIEW_SS_MAX, 0);
     (void)ui_toggle(ui, 307, c, r, "grid", &a->grid);
     (void)ui_toggle(ui, 308, c + 9, r, "snap", &a->snap);
+    (void)ui_toggle(ui, 311, c + 18, r, "chain", &a->wall_chain);
     r += 2;
 
     if (a->sel >= 0 && a->sel < a->scene.obj_count) {
@@ -1263,6 +1420,39 @@ static void draw_panel(App *a)
             say(a, "took that lamp away");
         }
         r++;
+    } else if (a->sel_water && a->scene.have_water) {
+        WaterSpec *ws = &a->scene.water;
+        int ch = 0;
+
+        ui_label(ui, c, r++, "selected pool", RGB(214, 232, 255));
+        ch |= ui_step(ui, 600, c, r++, w - 4, "level", &ws->level, 0.25f,
+                      -64.0f, 64.0f, 2);
+        ch |= ui_step(ui, 601, c, r++, w - 4, "x0", &ws->lo.x, 0.5f, -128.0f,
+                      128.0f, 1);
+        ch |= ui_step(ui, 602, c, r++, w - 4, "z0", &ws->lo.z, 0.5f, -128.0f,
+                      128.0f, 1);
+        ch |= ui_step(ui, 603, c, r++, w - 4, "x1", &ws->hi.x, 0.5f, -128.0f,
+                      128.0f, 1);
+        ch |= ui_step(ui, 604, c, r++, w - 4, "z1", &ws->hi.z, 0.5f, -128.0f,
+                      128.0f, 1);
+        ch |= ui_step(ui, 605, c, r++, w - 4, "space", &ws->spacing, 0.1f, 0.1f,
+                      2.0f, 1);
+        ch |= ui_step(ui, 606, c, r++, w - 4, "heat", &ws->heat, 0.1f, 0.0f,
+                      4.0f, 1);
+        if (ch != 0) {
+            water_apply(a);
+            (void)snprintf(a->msg, sizeof a->msg,
+                           "pool %.1f x %.1f at level %.1f",
+                           (double)(ws->hi.x - ws->lo.x),
+                           (double)(ws->hi.z - ws->lo.z), (double)ws->level);
+        }
+        if (ui_button(ui, 607, c, r, "drain")) {
+            a->scene.have_water = 0;
+            a->sel_water = 0;
+            water_apply(a);
+            say(a, "drained the pool");
+        }
+        r++;
     }
 
     if (r < h - 2 && a->msg[0] != '\0') {
@@ -1277,6 +1467,8 @@ static void draw_help(App *a)
         "WASD      fly, space/c rise and sink",
         "arrows    look around",
         "click     build the current tool",
+        "wall      preset length, chain joins runs",
+        "select    blocks, lamps and the pool",
         "rclick    cancel the anchor, or take a panel",
         "1..9, 0   switch tool, tab for the next",
         "click num type a value, enter lands it",
@@ -1376,10 +1568,13 @@ int main(int argc, char **argv)
     a.grid = 1;
     a.sel = -1;
     a.sel_light = -1;
+    a.sel_water = 0;
     a.riser = 0.25f;
     a.stair_w = 1.6f;
     a.wall = 0.25f;
     a.wall_h = 3.0f;
+    a.wall_len = 4.0f;
+    a.wall_chain = 1;
     a.depth = 2.0f;
     a.lamp_i = 4.0f;
     a.res = 0.0f;

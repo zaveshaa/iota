@@ -79,14 +79,17 @@ set that redraws itself every frame the way Dear ImGui does; a click on the
 panel is swallowed there and never reaches the world. The camera flies free and
 the pointer moves a cursor whose ray picks the surface under it. A tool shapes
 what a pair of clicks builds: a `box` spans two corners in the chosen material,
-`wall` raises a straight run to the height the panel sets, `water` floods a
+`wall` either spans two clicks or stamps a preset length the way the camera
+faces, with a chain toggle that carries the next run on from the last one's end,
+`water` floods a
 rectangle, `stairs` rise from a foot to a top, `tunnel` bores a roofed,
 open-ended corridor, `pit` sinks an open-topped basin of the set depth, `spawn`
 sets where the body starts, `light` hangs a lamp, `paint` turns a block's
-material over, and `erase` takes a panel away. The `select` tool picks a panel
-or a lamp and the panel then edits its position, size, turn, colour (as red,
-green and blue steppers with a swatch), and, for a lamp, its
-power. The first click drops an anchor, a ghost previews the build as the
+material over, and `erase` takes a panel or the pool away. The `select` tool
+picks a panel, a lamp or the pool, and the panel then edits its position, size,
+turn, colour (as red, green and blue steppers with a swatch), and, for a lamp,
+its power, or, for the pool, its corners, level, ripple spacing and heat.
+The first click drops an anchor, a ghost previews the build as the
 pointer moves, and the second click lays it down. A ground grid with coloured
 axes can be turned on to line the walls up. `r` turns the block under the cursor
 about the vertical. Any number on the panel can be clicked and typed straight
@@ -131,10 +134,11 @@ are the object's bits.
 | `Esc` | cancel the anchor, or quit |
 
 The panel carries the tool and material buttons, steppers for the stair riser,
-stair width, wall thickness and height, the pit depth, the new lamp's power and
-the render resolution, toggles for the snapping and the ground grid, and the
-properties of whatever the `select` tool last picked. A stepper's number opens an
-edit when clicked, so an exact value can be typed rather than nudged.
+stair width, wall thickness, height and preset length, the pit depth, the new
+lamp's power and the render resolution, toggles for the snapping, the ground
+grid and wall chaining, and the properties of whatever the `select` tool last
+picked. A stepper's number opens an edit when clicked, so an exact value can be
+typed rather than nudged.
 
 ## Controls
 
