@@ -11,7 +11,7 @@
 // stops dead in the middle of a hold. A terminal that reports keys coming up has
 // nothing to time: the key is down from its press until its release. Everywhere
 // else the lease is the terminal's own repeat delay, learned from the gaps
-// between arrivals and never shorter than the gap that just arrived.
+// between arrivals within a cap, so a pause between taps is not read as a hold.
 #define INPUT_MAX_KEYS      16
 #define INPUT_HOLD_TERMINAL 0.25
 #define INPUT_HOLD_SLOWEST  0.40

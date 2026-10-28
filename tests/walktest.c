@@ -42,6 +42,7 @@ static Walk make_walk(Vec3 pos)
     w.radius = 0.3f;
     w.height = 1.7f;
     w.step = 0.42f;
+    w.coyote = 0.0f;
     w.on_ground = 0;
     w.jump = 0;
     return w;

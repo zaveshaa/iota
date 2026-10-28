@@ -18,6 +18,9 @@ jobs:
       - name: build with warnings fatal
         run: make WERROR=1 all
 
+      - name: build the editor with warnings fatal
+        run: make WERROR=1 editor
+
       - name: run the checks
         run: make WERROR=1 test
 

@@ -209,7 +209,7 @@ int level_load(Scene *s, const char *path)
             o->flags = tu(tok[12]);
             o->mesh = n >= 14 ? (int)tu(tok[13]) : -1;
             o->yaw = n >= 15 ? tf(tok[14]) : 0.0f;
-        } else if (strcmp(tok[0], "light") == 0 && n >= 8) {
+        } else if (strcmp(tok[0], "light") == 0 && n >= 9) {
             Light *l = scene_add_light(s);
 
             if (l == NULL) {

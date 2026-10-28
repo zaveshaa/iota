@@ -92,13 +92,17 @@ static void app_draw(Engine *e)
     App *a = engine_user(e);
     Render *r = engine_render(e);
     char line[96];
+    char tag[8];
 
     view_render(&a->scene, &a->meshes, NULL, &a->cam, r, engine_ss(e),
                 (float)VIEW_BUDGET_MS, &a->stats);
+    tag[0] = '\0';
+    if (engine_ss(e) > 1) {
+        (void)snprintf(tag, sizeof tag, " %dx", engine_ss(e));
+    }
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,
-                   engine_ss(e) == 2 ? " 2x" : "",
-                   a->stats.budget_hit ? " BUDGET" : "");
+                   tag, a->stats.budget_hit ? " BUDGET" : "");
     render_text(r, 1, 0, line, RGB(120, 230, 140));
     render_text(r, 1, 1, " WASD move  arrows look  Esc quit",
                 RGB(96, 132, 160));

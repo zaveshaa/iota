@@ -66,12 +66,7 @@ body wades slower under the water's drag. `./walk <level>` opens a saved level
 instead, and drops the body at its spawn. `Tab` steps to the next `.lvl` in the
 working directory or in `levels/`, the body restarting at that map's spawn, and
 wraps back to the built-in range after the last one; the current map sits in the
-corner of the status line. Two sample maps ship in `levels/`: `bathhouse.lvl`, a
-warm tiled bath ringed by pillars, lanterns and glowing shoji screens, its
-springs pouring steam, and
-`castle.lvl`, a small island
-joined by a humpback bridge to a Japanese castle whose floors rise from public
-baths, through private ones, to a top-floor study.
+corner of the status line.
 
 `./editor [level]` lays out a level. A panel down the left side holds the tools,
 the material and the shape settings, drawn with a small immediate-mode widget
@@ -195,11 +190,12 @@ cold pool steams nowhere.
     src/        the engine
     demos/      the scenes
     assets/     the mark and a sample mesh
+    tests/      the checks
 
 ## Version
 
 iota follows [Semantic Versioning](https://semver.org). The current release is
-`0.1.0`, kept in `include/engine.h` as `IOTA_VERSION`; every release is a tag
+`0.2.0`, kept in `include/engine.h` as `IOTA_VERSION`; every release is a tag
 and a note in [CHANGELOG.md](CHANGELOG.md). See [CONTRIBUTING.md](CONTRIBUTING.md)
 to help.
 

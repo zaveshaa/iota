@@ -4,9 +4,9 @@ Notable changes to iota are written down here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version
 numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2026-10-25
-
 ## [Unreleased]
+
+## [0.2.0] - 2026-10-25
 
 ### Added
 
@@ -88,5 +88,6 @@ numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - WASD movement, arrow-key look and `Esc` to quit.
 - A golden-frame test, and CI on Linux and macOS with warnings fatal.
 
-[Unreleased]: https://github.com/zaveshaa/iota/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/zaveshaa/iota/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/zaveshaa/iota/releases/tag/v0.2.0
 [0.1.0]: https://github.com/zaveshaa/iota/releases/tag/v0.1.0

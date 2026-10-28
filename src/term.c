@@ -118,10 +118,10 @@ static int poll_byte(char *c, int ms)
     return read(STDIN_FILENO, c, 1) == 1;
 }
 
-// CSI ? u asks which flags the keyboard is on and the answer is CSI ? flags u.
-// Only the shape of the answer is believed, not what it says: the flags in it are
-// the ones in use right now, and a terminal nobody has asked anything of is using
-// none of them, so a terminal that can do this answers with a zero.
+// CSI ? u asks which flags the keyboard keeps and the answer is CSI ? flags u.
+// The answer is a bit field naming the flags the terminal will honour, so the
+// reply that follows the request is checked for the bit that reports a key
+// coming up rather than trusting the request to have landed.
 static int ask_kitty(void)
 {
     int waited;

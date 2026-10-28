@@ -20,7 +20,7 @@ static float clampf(float x, float lo, float hi)
     return x;
 }
 
-/* 0 in the open water, easing to nothing against the basin walls */
+/* 1 in the open water, easing to 0 against the basin walls */
 static float shore(const Water *w, float x, float z)
 {
     float d1 = x - w->x0;
@@ -289,6 +289,9 @@ int water_body(Water *w, Vec3 feet, float radius, Vec3 vel, float dt)
 {
     float surf;
 
+    if (w->cur == NULL) {
+        return 0;
+    }
     if (feet.y >= w->base_h - 1e-3f) {
         return 0;
     }

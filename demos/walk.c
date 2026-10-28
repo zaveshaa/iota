@@ -357,6 +357,7 @@ static void app_draw(Engine *e)
     Camera view = a->cam;
     float alpha = (float)engine_alpha(e);
     char line[192];
+    char tag[8];
 
     view.pos = v3(lerpf(a->prev_pos.x, a->player.pos.x, alpha),
                   lerpf(a->prev_pos.y, a->player.pos.y, alpha) + EYE,
@@ -365,10 +366,13 @@ static void app_draw(Engine *e)
     view.pitch = lerpf(a->prev_pitch, a->cam.pitch, alpha);
     view_render(&a->scene, &a->meshes, &a->water, &view, r, engine_ss(e),
                 (float)VIEW_BUDGET_MS, &a->stats);
+    tag[0] = '\0';
+    if (engine_ss(e) > 1) {
+        (void)snprintf(tag, sizeof tag, " %dx", engine_ss(e));
+    }
     (void)snprintf(line, sizeof line, " %5.1f ms %7u rays depth %d%s%s",
                    engine_draw_ms(e), a->stats.rays, a->stats.depth_max,
-                   engine_ss(e) == 2 ? " 2x" : "",
-                   a->stats.budget_hit ? " BUDGET" : "");
+                   tag, a->stats.budget_hit ? " BUDGET" : "");
     render_text(r, 1, 0, line, RGB(120, 230, 140));
     (void)snprintf(line, sizeof line,
                    " WASD walk  arrows look  space jump  Tab map  Esc quit"
