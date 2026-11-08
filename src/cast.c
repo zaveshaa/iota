@@ -164,15 +164,19 @@ static int intersect_obj(const Obj *o, const Meshes *ms, Vec3 origin, Vec3 dir,
 }
 
 int cast_any(const Scene *s, const Meshes *ms, Vec3 origin, Vec3 dir,
-             float tmax)
+             float tmax, unsigned skip_flags)
 {
     int i;
 
     for (i = 0; i < s->obj_count; i++) {
+        const Obj *o = &s->objs[i];
         float t = 0.0f;
         Vec3 n = v3(0.0f, 0.0f, 0.0f);
 
-        if (intersect_obj(&s->objs[i], ms, origin, dir, &t, &n) && t < tmax) {
+        if ((o->flags & skip_flags) != 0u) {
+            continue;
+        }
+        if (intersect_obj(o, ms, origin, dir, &t, &n) && t < tmax) {
             return 1;
         }
     }
