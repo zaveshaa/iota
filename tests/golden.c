@@ -473,6 +473,52 @@ static void glass_checks(void)
           "a glass pane lets the light behind it through", NULL);
 }
 
+static void glass_shadow_checks(void)
+{
+    Scene s;
+    Camera cam;
+    Obj *o;
+    Light *l;
+    float open_lum;
+    float glass_lum;
+    float solid_lum;
+
+    scene_clear(&s);
+    s.ambient = 0u;
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, -0.5f, 0.0f);
+    o->half = v3(20.0f, 0.5f, 20.0f);
+    o->ink = RGB(200, 200, 200);
+    l = scene_add_light(&s);
+    l->kind = LIGHT_POINT;
+    l->pos = v3(0.0f, 8.0f, 0.0f);
+    l->color = v3(1.0f, 1.0f, 1.0f);
+    l->intensity = 3.0f;
+    cam.pos = v3(0.0f, 5.0f, 6.0f);
+    cam.yaw = 3.14159265f;
+    cam.pitch = -0.6f;
+    cam.fov = 1.05f;
+
+    open_lum = frame_lum(&s, &cam);
+
+    o = scene_add_obj(&s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(0.0f, 6.0f, 0.0f);
+    o->half = v3(30.0f, 0.2f, 30.0f);
+    o->ink = RGB(200, 220, 255);
+    o->flags = OBJ_GLASS;
+
+    glass_lum = frame_lum(&s, &cam);
+    o->flags = OBJ_NONE;
+    solid_lum = frame_lum(&s, &cam);
+
+    check(glass_lum > solid_lum,
+          "a glass pane lets light reach the floor behind it", NULL);
+    check(glass_lum > open_lum * 0.95f,
+          "a glass pane barely dims the light it passes", NULL);
+}
+
 int main(int argc, char **argv)
 {
     static unsigned want[GOLD_COLS * GOLD_ROWS];
@@ -497,6 +543,7 @@ int main(int argc, char **argv)
     steam_checks();
     shoji_checks();
     glass_checks();
+    glass_shadow_checks();
 
     r = render_open(GOLD_COLS, GOLD_ROWS);
     if (r == NULL) {
