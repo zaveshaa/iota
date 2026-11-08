@@ -69,7 +69,7 @@ static int in_shadow(const Scene *s, const Meshes *ms, Vec3 point, Vec3 normal,
 {
     Vec3 ro = v3_add(point, v3_mul(normal, 2e-3f));
 
-    return cast_any(s, ms, ro, ld, tmax);
+    return cast_any(s, ms, ro, ld, tmax, OBJ_GLASS);
 }
 
 static Vec3 shade(const Scene *s, const Meshes *ms, const Hit *h)
