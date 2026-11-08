@@ -126,7 +126,7 @@ typedef struct {
     int rclick;
     int btn_down;
     char path[256];
-    char msg[80];
+    char msg[320];
 } App;
 
 static float clampf(float v, float lo, float hi)
@@ -1544,7 +1544,7 @@ static void app_draw(Engine *e)
     hist_settle(a);
 
     {
-        char line[160];
+        char line[512];
 
         (void)snprintf(line, sizeof line,
                        " h help   g snap   tab tool   %dx   %s%s   %s", ss,
