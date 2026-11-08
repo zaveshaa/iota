@@ -3,23 +3,8 @@
 #include <float.h>
 #include <math.h>
 #include <stddef.h>
-#include <stdlib.h>
 
 #define HIT_EPS 1e-4f
-#define SCENE_BVH_LEAF 4
-
-typedef struct {
-    Vec3 lo;
-    Vec3 hi;
-} Aabb;
-
-typedef struct {
-    Aabb box;
-    int left;
-    int right;
-    int start;
-    int count;
-} SceneNode;
 
 static int ray_box(Vec3 o, Vec3 d, Vec3 c, Vec3 half, float yaw, float *t_out,
                    Vec3 *n_out)
