@@ -1032,7 +1032,9 @@ static void app_poll(Engine *e)
             break;
         case 19:
             if (level_save(&a->scene, a->path) == 0) {
-                (void)snprintf(a->msg, sizeof a->msg, "wrote %s", a->path);
+                (void)snprintf(a->msg, sizeof a->msg, "wrote %.*s",
+                               (int)(sizeof a->msg - sizeof "wrote "),
+                               a->path);
             } else {
                 say(a, "could not write the level");
             }
@@ -1044,7 +1046,9 @@ static void app_poll(Engine *e)
                 a->sel_light = -1;
                 a->sel_water = 0;
                 ui_edit_stop(&a->ui);
-                (void)snprintf(a->msg, sizeof a->msg, "read %s", a->path);
+                (void)snprintf(a->msg, sizeof a->msg, "read %.*s",
+                               (int)(sizeof a->msg - sizeof "read "),
+                               a->path);
             } else {
                 say(a, "could not read the level");
             }
@@ -1547,8 +1551,8 @@ static void app_draw(Engine *e)
         char line[512];
 
         (void)snprintf(line, sizeof line,
-                       " h help   g snap   tab tool   %dx   %s%s   %s", ss,
-                       a->path, a->scene.have_spawn ? "" : " (no spawn)",
+                       " h help   g snap   tab tool   %dx   %.*s%s   %s", ss,
+                       64, a->path, a->scene.have_spawn ? "" : " (no spawn)",
                        TOOL_HINT[a->tool]);
         render_text(r, 0, a->rows - 1, line, RGB(96, 132, 160));
     }
@@ -1587,7 +1591,8 @@ int main(int argc, char **argv)
     mesh_load(&a.meshes, "assets/gem.obj");
     if (level_load(&a.scene, a.path) != 0) {
         app_new(&a);
-        (void)snprintf(a.msg, sizeof a.msg, "new level: %s", a.path);
+        (void)snprintf(a.msg, sizeof a.msg, "new level: %.*s",
+                       (int)(sizeof a.msg - sizeof "new level: "), a.path);
     } else {
         water_apply(&a);
     }
