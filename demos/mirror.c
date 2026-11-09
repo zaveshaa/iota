@@ -19,6 +19,68 @@ typedef struct {
     Input input;
 } App;
 
+static void add_showcase_details(Scene *s)
+{
+    Obj *o;
+    Light *l;
+
+    s->ambient = RGB(34, 40, 58);
+    s->fog = RGB(10, 14, 28);
+    s->fog_start = 12.0f;
+    s->fog_range = 52.0f;
+    s->sky_top = RGB(4, 7, 24);
+    s->sky_horizon = RGB(78, 42, 92);
+    s->sky_moon_dir = v3(-0.45f, 0.42f, 1.0f);
+    s->sky_moon = RGB(255, 224, 178);
+    s->sky_moon_size = 0.065f;
+    s->have_moon = 1;
+    s->objs[0].flags = OBJ_TILE;
+
+    o = scene_add_obj(s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(-4.2f, 2.0f, 6.8f);
+    o->half = v3(0.06f, 2.0f, 1.7f);
+    o->ink = RGB(142, 194, 214);
+    o->flags = OBJ_GLASS;
+
+    o = scene_add_obj(s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(4.2f, 2.0f, 6.8f);
+    o->half = v3(0.06f, 2.0f, 1.7f);
+    o->ink = RGB(224, 196, 156);
+    o->flags = OBJ_SHOJI;
+
+    o = scene_add_obj(s);
+    o->kind = OBJ_SPHERE;
+    o->pos = v3(-1.2f, 0.9f, 5.2f);
+    o->half = v3(0.9f, 0.9f, 0.9f);
+    o->ink = RGB(198, 76, 158);
+
+    o = scene_add_obj(s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(-4.0f, 0.65f, 3.2f);
+    o->half = v3(0.35f, 0.65f, 0.35f);
+    o->ink = RGB(242, 170, 72);
+
+    o = scene_add_obj(s);
+    o->kind = OBJ_BOX;
+    o->pos = v3(4.0f, 0.9f, 3.8f);
+    o->half = v3(0.45f, 0.9f, 0.45f);
+    o->ink = RGB(106, 224, 190);
+
+    l = scene_add_light(s);
+    l->kind = LIGHT_POINT;
+    l->pos = v3(3.8f, 2.4f, 5.0f);
+    l->color = v3(0.45f, 0.75f, 1.0f);
+    l->intensity = 2.2f;
+
+    l = scene_add_light(s);
+    l->kind = LIGHT_SUN;
+    l->dir = v3_norm(v3(-0.3f, -0.8f, 0.5f));
+    l->color = v3(0.52f, 0.60f, 1.0f);
+    l->intensity = 0.65f;
+}
+
 static float clamp_pitch(float p)
 {
     if (p > PITCH_MAX) {
@@ -117,6 +179,7 @@ int main(void)
     memset(&a, 0, sizeof a);
     input_clear(&a.input);
     mirror_scene(&a.scene, &a.cam);
+    add_showcase_details(&a.scene);
     e = engine_open(&hooks, &a);
     if (e == NULL) {
         (void)fprintf(stderr, "iota: no terminal to draw in\n");
