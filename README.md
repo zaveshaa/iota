@@ -58,7 +58,7 @@ make clean      # remove build files
 ```text
 include/    headers
 src/        renderer and engine
- demos/     scenes
+demos/      scenes
 assets/     logo and sample files
 tests/      tests
 ```
